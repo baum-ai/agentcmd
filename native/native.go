@@ -19,10 +19,19 @@ type ShellSource struct {
 	Dialect string
 }
 
+// Exec asks the engine to analyze a literal argv without shell parsing.
+type Exec struct {
+	Executable string
+	Args       []string
+	// Workdir overrides the invocation's working directory when set.
+	Workdir string
+}
+
 // Result is what a binding produces.
 type Result struct {
 	Actions []model.Action
 	Shell   *ShellSource
+	Exec    *Exec
 	// Detail labels the native node (e.g. "read", "edit", "patch").
 	Detail      string
 	Assumptions []string
@@ -125,4 +134,33 @@ func Resource(inv *model.Invocation, p, role string) model.Resource {
 		res.Resolved = cleanPath(inv.Context.WorkingDir.Value + "/" + p)
 	}
 	return res
+}
+
+// Annotations are MCP ToolAnnotations. The protocol states they are hints
+// that need not describe behaviour faithfully; a binding built from them is
+// marked Hint and produces no actions.
+type Annotations struct {
+	Title           string `json:"title,omitempty"`
+	ReadOnlyHint    *bool  `json:"readOnlyHint,omitempty"`
+	DestructiveHint *bool  `json:"destructiveHint,omitempty"`
+	IdempotentHint  *bool  `json:"idempotentHint,omitempty"`
+	OpenWorldHint   *bool  `json:"openWorldHint,omitempty"`
+}
+
+// FromAnnotations builds a hint-only binding for an MCP tool.
+func FromAnnotations(namespace, tool string, ann Annotations) Binding {
+	detail := "declared:"
+	flag := func(name string, v *bool) {
+		if v != nil {
+			detail += fmt.Sprintf(" %s=%t", name, *v)
+		}
+	}
+	flag("read-only", ann.ReadOnlyHint)
+	flag("destructive", ann.DestructiveHint)
+	flag("idempotent", ann.IdempotentHint)
+	flag("open-world", ann.OpenWorldHint)
+	return Binding{ID: "mcp/annotations/" + namespace + "/" + tool, Version: "2025-11-25", Namespace: namespace, Tool: tool, Doc: "MCP ToolAnnotations",
+		Bind: func(*model.Invocation) (Result, error) {
+			return Result{Detail: detail, Hint: true, Diagnostics: []model.Diagnostic{{Code: model.DiagUnknownTool, Severity: model.SeverityInfo, Message: "tool effects known only from declared annotations, which are hints"}}}, nil
+		}}
 }

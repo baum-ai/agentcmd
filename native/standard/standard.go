@@ -24,8 +24,24 @@ func Bindings() []native.Binding {
 			native.Binding{ID: "std/claude-code/Read", Version: "1", Namespace: ns, Tool: "Read", Harness: "claude-code", Doc: "{file_path, offset?, limit?}", Bind: bindRead},
 			native.Binding{ID: "std/claude-code/Write", Version: "1", Namespace: ns, Tool: "Write", Harness: "claude-code", Doc: "{file_path, content}", Bind: bindWrite},
 			native.Binding{ID: "std/claude-code/Edit", Version: "1", Namespace: ns, Tool: "Edit", Harness: "claude-code", Doc: "{file_path, old_string, new_string, replace_all?}", Bind: bindEdit},
+			native.Binding{ID: "std/claude-code/MultiEdit", Version: "1", Namespace: ns, Tool: "MultiEdit", Harness: "claude-code", Doc: "{file_path, edits[]}", Bind: bindMultiEdit},
+			native.Binding{ID: "std/claude-code/NotebookEdit", Version: "1", Namespace: ns, Tool: "NotebookEdit", Harness: "claude-code", Doc: "{notebook_path, ...}", Bind: bindNotebookEdit},
+			native.Binding{ID: "std/claude-code/Glob", Version: "1", Namespace: ns, Tool: "Glob", Harness: "claude-code", Doc: "{pattern, path?}", Bind: bindGlob},
+			native.Binding{ID: "std/claude-code/Grep", Version: "1", Namespace: ns, Tool: "Grep", Harness: "claude-code", Doc: "{pattern, path?, glob?, type?, output_mode?}", Bind: bindGrep},
+			native.Binding{ID: "std/claude-code/LS", Version: "1", Namespace: ns, Tool: "LS", Harness: "claude-code", Doc: "{path}", Bind: bindLS},
+			native.Binding{ID: "std/claude-code/Task", Version: "1", Namespace: ns, Tool: "Task", Harness: "claude-code", Doc: "{prompt, description, subagent_type?}", Bind: bindTask},
+			native.Binding{ID: "std/claude-code/Agent", Version: "1", Namespace: ns, Tool: "Agent", Harness: "claude-code", Doc: "{prompt, description, subagent_type?}", Bind: bindTask},
+			native.Binding{ID: "std/claude-code/WebFetch", Version: "1", Namespace: ns, Tool: "WebFetch", Harness: "claude-code", Doc: "{url, prompt}", Bind: bindWebFetch},
+			native.Binding{ID: "std/claude-code/WebSearch", Version: "1", Namespace: ns, Tool: "WebSearch", Harness: "claude-code", Doc: "{query}", Bind: bindWebFetch},
+			native.Binding{ID: "std/codex/apply_patch", Version: "1", Namespace: ns, Tool: "apply_patch", Harness: "codex", Doc: "{input: patch text} or free-form patch text", Bind: bindApplyPatch},
+			native.Binding{ID: "std/codex/shell", Version: "1", Namespace: ns, Tool: "shell", Harness: "codex", Doc: "{command: [argv], workdir?, timeout_ms?}", Bind: bindArgvShell},
+			native.Binding{ID: "std/codex/exec_command", Version: "1", Namespace: ns, Tool: "exec_command", Harness: "codex", Doc: "{cmd: string, workdir?}", Bind: bindShellField("cmd")},
 		)
 	}
+	out = append(out,
+		native.Binding{ID: "std/codex/apply_patch", Version: "1", Namespace: "codex", Tool: "apply_patch", Harness: "codex", Doc: "{input: patch text} or free-form patch text", Bind: bindApplyPatch},
+		native.Binding{ID: "std/codex/shell", Version: "1", Namespace: "codex", Tool: "shell", Harness: "codex", Doc: "{command: [argv], workdir?}", Bind: bindArgvShell},
+	)
 	return out
 }
 
@@ -90,4 +106,15 @@ func bindEdit(inv *model.Invocation) (native.Result, error) {
 	a := model.Action{Kind: model.FSWrite, Write: &model.WriteDetail{Mode: model.WriteInPlace}, Evidence: model.Evidence{Basis: model.BasisToolContract},
 		Resources: []model.Resource{native.Resource(inv, in.FilePath, "target")}}
 	return native.Result{Detail: "edit", Actions: []model.Action{a}}, nil
+}
+
+// bindApplyPatch accepts either JSON {"input": "..."} or free-form text.
+func bindApplyPatch(inv *model.Invocation) (native.Result, error) {
+	switch inv.Input.Kind {
+	case model.InputText:
+		return native.PatchResult(inv, inv.Input.Text)
+	case model.InputPatch:
+		return native.PatchResult(inv, inv.Input.Patch)
+	}
+	return bindPatchField("input")(inv)
 }

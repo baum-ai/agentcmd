@@ -10,6 +10,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/lastpersonlabs/toolparser/internal/analysis"
 	"github.com/lastpersonlabs/toolparser/internal/shell"
@@ -91,17 +93,14 @@ func (e *Engine) Analyze(ctx context.Context, inv model.Invocation) (model.Analy
 	case model.InputJSON, model.InputText:
 		e.analyzeNative(b, root, &inv, actx)
 	case model.InputArgv:
-		argv := make([]model.Value, len(inv.Input.Argv))
-		for i, a := range inv.Input.Argv {
-			argv[i] = model.Literal(a)
-		}
-		b.RunCommand(root, rules.Command{Executable: model.Literal(inv.Input.Executable), Args: argv, Span: model.SourceSpan{Source: "s0", End: store.Len()}}, actx)
+		exe, argv := argvValues(inv.Input.Executable, inv.Input.Argv)
+		b.RunCommand(root, rules.Command{Executable: exe, Args: argv, Span: model.SourceSpan{Source: "s0", End: len(store.Text("s0"))}}, actx)
 	case model.InputSource:
 		span := model.SourceSpan{Source: "s0", End: len(inv.Input.Source)}
 		p := rules.Program{Language: inv.Input.Language, Mode: "inline", SourceID: "s0", Source: &model.Value{Knowledge: model.KnowledgeLiteral, Text: inv.Input.Source, Span: &span}}
 		b.RunProgram(root, p, rules.Command{Executable: model.Literal(inv.Input.Language), Span: span}, actx)
 	case model.InputPatch:
-		b.Unknown(root, &model.SourceSpan{Source: "s0", End: len(inv.Input.Patch)}, actx, model.DiagUnsupported, "patch input is not yet bound")
+		e.analyzeNative(b, root, &inv, actx)
 	case model.InputBlob:
 		b.Unknown(root, nil, actx, model.DiagMissingSnapshot, "blob content is caller-owned and was not supplied")
 	}
@@ -148,6 +147,12 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 	node := model.Node{Parent: root, Kind: model.NodeNative, Span: &model.SourceSpan{Source: "s0", End: b.Store.Len()}, Context: actx.NodeContext(),
 		Native: &model.NativeCall{Namespace: inv.Tool.Namespace, Tool: inv.Tool.Name}}
 	binding, ok := e.native.Lookup(inv.Tool)
+	if !ok && inv.Input.Kind == model.InputPatch {
+		// Patch input needs no tool binding: the format is self-describing.
+		binding, ok = native.Binding{ID: "native/patch", Version: "1", Tool: inv.Tool.Name, Bind: func(inv *model.Invocation) (native.Result, error) {
+			return native.PatchResult(inv, inv.Input.Patch)
+		}}, true
+	}
 	if !ok {
 		id := b.AddNode(node)
 		b.Diag(model.Diagnostic{Code: model.DiagUnknownTool, Severity: model.SeverityInfo, Node: id, Message: fmt.Sprintf("no binding for tool %s/%s; input kept opaque", inv.Tool.Namespace, inv.Tool.Name)})
@@ -176,6 +181,17 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 			a.Evidence.Assumptions = append(a.Evidence.Assumptions, "classification derived from declared tool annotations, not a verified contract")
 		}
 		b.AddAction(id, a)
+	}
+	if res.Exec != nil {
+		execCtx := actx
+		if res.Exec.Workdir != "" {
+			execCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: res.Exec.Workdir}
+			if !strings.HasPrefix(res.Exec.Workdir, "/") && actx.Cwd.Concrete() {
+				execCtx.Cwd.Text = path.Join(actx.Cwd.Text, res.Exec.Workdir)
+			}
+		}
+		exe, argv := argvValues(res.Exec.Executable, res.Exec.Args)
+		b.RunCommand(id, rules.Command{Executable: exe, Args: argv, Span: model.SourceSpan{Source: "s0", End: len(b.Store.Text("s0"))}}, execCtx)
 	}
 	if res.Shell != nil {
 		sid := "s0"
@@ -250,3 +266,15 @@ func rootText(in model.Input) []byte {
 }
 
 func inputSize(in model.Input) int { return len(rootText(in)) }
+
+// argvValues builds literal values for an argv. When the root source is the
+// NUL-joined argv (argv input) each value gets its byte span; otherwise the
+// values carry no span and nested sources map approximately onto the input.
+func argvValues(executable string, args []string) (model.Value, []model.Value) {
+	exe := model.Literal(executable)
+	argv := make([]model.Value, len(args))
+	for i, a := range args {
+		argv[i] = model.Literal(a)
+	}
+	return exe, argv
+}

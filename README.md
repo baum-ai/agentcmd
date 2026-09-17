@@ -19,7 +19,7 @@ environment, and builds with `CGO_ENABLED=0`.
 | M0 evidence, model decisions, dependency qualification | done |
 | M1 canonical model and library skeleton | done |
 | M2 shell structure, state, guarded actions | done |
-| M3 shell/native rules and CLI | planned |
+| M3 shell/native rules and CLI | done |
 | M4 embedded Python and JavaScript | planned |
 | M5 session ingestion and result association | planned |
 | M6 historical snapshot enrichment | planned |
@@ -49,3 +49,16 @@ analysis, err := e.AnalyzeShell(ctx, []byte("cat README.md"), model.ExecutionCon
 `Analyze` takes a canonical `model.Invocation` (JSON arguments, text, argv,
 inline source, patch or blob). Structured tool inputs go through native
 bindings; text inputs are analyzed as shell only when a binding says so.
+
+## CLI
+
+```sh
+go run ./cmd/agentcmd analyze -cwd /workspace/project -structure - <<'EOF2'
+cd service && python - <<'PY'
+from pathlib import Path
+Path("config.json").write_text("x")
+PY
+EOF2
+```
+
+See `docs/cli.md`.

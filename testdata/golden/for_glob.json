@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1.0",
-  "id": "an_c7af1523c4816781710a426b",
+  "id": "an_8ab6aa7d949bbc1919d76290",
   "invocation": "shell",
   "versions": {
     "analyzer": "0.1.0",
-    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "ruleset": "9695ac7542c7d821/9e5c4870cf4a3144",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },
   "nodes": [
@@ -110,7 +110,12 @@
               "end": 27
             }
           }
-        ]
+        ],
+        "assumptions": [
+          "\"wc\" denotes the standard executable",
+          "non-literal argument \"*.md\" assumed to be an operand"
+        ],
+        "rule": "std/wc@1"
       },
       "context": {
         "cwd": {
@@ -127,51 +132,32 @@
     {
       "id": "a1",
       "node": "n4",
-      "kind": "process.execute",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "*.md",
+          "resolved": "/w/*.md",
+          "knowledge": "glob",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 25,
+            "end": 27
+          }
+        }
+      ],
       "evidence": {
         "basis": "syntax",
-        "assumptions": [
-          "no rule for \"wc\"; effects unknown"
-        ],
+        "rule": "std/wc",
+        "rule_version": "1",
         "spans": [
           {
             "source": "s0",
             "start": 18,
             "end": 29
-          }
-        ]
-      },
-      "process": {
-        "executable": {
-          "knowledge": "literal",
-          "text": "wc",
-          "span": {
-            "source": "s0",
-            "start": 18,
-            "end": 20
-          }
-        },
-        "args": [
-          {
-            "knowledge": "literal",
-            "text": "-l",
-            "span": {
-              "source": "s0",
-              "start": 21,
-              "end": 23
-            }
-          },
-          {
-            "knowledge": "glob",
-            "text": "*.md",
-            "assumptions": [
-              "one match of the glob *.md"
-            ],
-            "span": {
-              "source": "s0",
-              "start": 25,
-              "end": 27
-            }
           }
         ]
       }

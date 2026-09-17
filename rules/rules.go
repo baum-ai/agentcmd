@@ -55,6 +55,8 @@ type Program struct {
 	Args []model.Value
 	// Dialect is the shell dialect for Language shell.
 	Dialect string
+	// Namespace switches the program's resource namespace (ssh).
+	Namespace *model.Namespace
 }
 
 // Result is what a rule produces for one command.
@@ -66,8 +68,11 @@ type Result struct {
 	// wrapper is recorded in the command's ancestry.
 	Wrapped *Command
 	// Namespace, when set with Wrapped, switches the inner command's
-	// resource namespace (ssh, docker exec).
-	Namespace   *model.Namespace
+	// resource namespace (docker exec, kubectl exec).
+	Namespace *model.Namespace
+	// Cwd, when set with Wrapped, is the inner command's working directory
+	// (env -C, sudo -D, docker exec -w).
+	Cwd         *model.Value
 	Assumptions []string
 	Diagnostics []model.Diagnostic
 }

@@ -290,6 +290,20 @@ func (b *Builder) RunCommand(parent string, cmd rules.Command, ctx Context) stri
 			// Inside a remote or container namespace the working directory
 			// of the host shell is meaningless.
 			ctx.Cwd, inner.Cwd = model.Unknown(), model.Unknown()
+		}
+		if res.Cwd != nil {
+			dir := *res.Cwd
+			switch {
+			case dir.Concrete() && strings.HasPrefix(dir.Text, "/"):
+				ctx.Cwd = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Clean(dir.Text), Assumptions: []string{"working directory set by " + path.Base(cmd.Executable.Text)}}
+			case dir.Concrete() && ctx.Cwd.Concrete():
+				ctx.Cwd = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Join(ctx.Cwd.Text, dir.Text), Assumptions: []string{"working directory set by " + path.Base(cmd.Executable.Text)}}
+			default:
+				ctx.Cwd = model.Value{Knowledge: model.KnowledgeSymbolic, Text: dir.Text}
+			}
+			inner.Cwd = ctx.Cwd
+		}
+		if res.Namespace != nil || res.Cwd != nil {
 			node.Context = ctx.NodeContext()
 		}
 		if inner.Stdin == nil {
@@ -306,6 +320,11 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 		Program: &model.Program{Language: p.Language, Interpreter: p.Interpreter, Mode: p.Mode, File: p.File}}
 	if p.Source != nil {
 		node.Span = p.Source.Span
+	}
+	if p.Namespace != nil {
+		ctx.Namespace = *p.Namespace
+		ctx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"working directory inside the remote namespace is unknown"}}
+		node.Context = ctx.NodeContext()
 	}
 	id := b.AddNode(node)
 	prog := b.Node(id).Program
@@ -333,8 +352,14 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 		b.Diag(model.Diagnostic{Code: model.DiagUnresolvedBinding, Node: id, Message: "program source is not available literally (unresolved expansion or unknown stdin)"})
 	default:
 		b.AddAction(id, action)
-		if p.SourceID == "" && p.Source.Span != nil {
-			p.SourceID = b.Store.DeriveWhole(p.Language, []byte(p.Source.Text), p.Source.Span.Source, p.Source.Span.Start, p.Source.Span.End)
+		if p.SourceID == "" {
+			if p.Source.Span != nil {
+				p.SourceID = b.Store.DeriveWhole(p.Language, []byte(p.Source.Text), p.Source.Span.Source, p.Source.Span.Start, p.Source.Span.End)
+			} else {
+				// No span: the text came from a structured field; map it
+				// approximately onto the whole invocation input.
+				p.SourceID = b.Store.DeriveWhole(p.Language, []byte(p.Source.Text), "s0", 0, len(b.Store.Text("s0")))
+			}
 		}
 		prog.Source = p.SourceID
 		if !b.CheckSourceSize(id, len(p.Source.Text)) {

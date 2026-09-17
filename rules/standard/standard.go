@@ -15,7 +15,18 @@ const Version = "0.1.0"
 
 // Rules returns every built-in rule.
 func Rules() []rules.Rule {
-	return []rules.Rule{catRule, headTailRule, lsRule, shellRule, pythonRule, nodeRule, otherInterpreters}
+	return []rules.Rule{
+		// reading, listing, search
+		catRule, headTailRule, lsRule, wcRule, pagerRule, diffRule, statRule, grepRule, rgRule, findRule, fdRule,
+		// modification
+		cpRule, mvRule, rmRule, rmdirRule, mkdirRule, touchRule, teeRule, sedRule, lnRule,
+		// git, development, packages, network
+		gitRule, goRule, makeRule, testRunnerRule, linterRule, formatterRule, cargoRule, nodePkgRule, pipRule, systemPkgRule, curlRule, wgetRule,
+		// wrappers and namespaces
+		envRule, timeoutRule, sudoRule, niceRule, xargsRule, sshRule, dockerRule, kubectlRule,
+		// interpreters
+		shellRule, pythonRule, nodeRule, otherInterpreters,
+	}
 }
 
 // readOperands emits one filesystem.read per file operand; "-" is stdin.

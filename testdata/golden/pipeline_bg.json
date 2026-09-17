@@ -1,10 +1,10 @@
 {
   "schema_version": "0.1.0",
-  "id": "an_84c615fae5036103f7526445",
+  "id": "an_ea8a6bfb7aa02ee180695ab6",
   "invocation": "shell",
   "versions": {
     "analyzer": "0.1.0",
-    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "ruleset": "9695ac7542c7d821/9e5c4870cf4a3144",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },
   "nodes": [
@@ -175,7 +175,11 @@
               "end": 26
             }
           }
-        ]
+        ],
+        "assumptions": [
+          "\"grep\" denotes the standard executable"
+        ],
+        "rule": "std/grep@1"
       },
       "context": {
         "cwd": {
@@ -218,7 +222,11 @@
               "end": 34
             }
           }
-        ]
+        ],
+        "assumptions": [
+          "\"wc\" denotes the standard executable"
+        ],
+        "rule": "std/wc@1"
       },
       "context": {
         "cwd": {
@@ -294,86 +302,6 @@
             "source": "s0",
             "start": 0,
             "end": 15
-          }
-        ]
-      }
-    },
-    {
-      "id": "a3",
-      "node": "n6",
-      "kind": "process.execute",
-      "evidence": {
-        "basis": "syntax",
-        "assumptions": [
-          "no rule for \"grep\"; effects unknown"
-        ],
-        "spans": [
-          {
-            "source": "s0",
-            "start": 18,
-            "end": 26
-          }
-        ]
-      },
-      "process": {
-        "executable": {
-          "knowledge": "literal",
-          "text": "grep",
-          "span": {
-            "source": "s0",
-            "start": 18,
-            "end": 22
-          }
-        },
-        "args": [
-          {
-            "knowledge": "literal",
-            "text": "foo",
-            "span": {
-              "source": "s0",
-              "start": 23,
-              "end": 26
-            }
-          }
-        ]
-      }
-    },
-    {
-      "id": "a4",
-      "node": "n7",
-      "kind": "process.execute",
-      "evidence": {
-        "basis": "syntax",
-        "assumptions": [
-          "no rule for \"wc\"; effects unknown"
-        ],
-        "spans": [
-          {
-            "source": "s0",
-            "start": 29,
-            "end": 34
-          }
-        ]
-      },
-      "process": {
-        "executable": {
-          "knowledge": "literal",
-          "text": "wc",
-          "span": {
-            "source": "s0",
-            "start": 29,
-            "end": 31
-          }
-        },
-        "args": [
-          {
-            "knowledge": "literal",
-            "text": "-l",
-            "span": {
-              "source": "s0",
-              "start": 32,
-              "end": 34
-            }
           }
         ]
       }

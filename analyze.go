@@ -21,6 +21,7 @@ import (
 	"github.com/lastpersonlabs/toolparser/model"
 	"github.com/lastpersonlabs/toolparser/native"
 	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/toolparser/snapshot"
 )
 
 // Version of the analyzer, recorded in every result.
@@ -38,6 +39,9 @@ type Config struct {
 	Languages Languages
 	// RetainSourceBytes is the largest source text kept in results.
 	RetainSourceBytes int
+	// Resolver optionally supplies script files and package manifests at the
+	// invocation's snapshot. Without it nothing outside the input is read.
+	Resolver snapshot.Resolver
 }
 
 // Engine analyzes invocations. It is immutable and safe for concurrent use.
@@ -67,7 +71,7 @@ func New(cfg Config) (*Engine, error) {
 		return nil, fmt.Errorf("toolparser: %w", err)
 	}
 	e := &Engine{cfg: cfg, rules: rr, native: nr}
-	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint()})
+	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
 	return e, nil
 }
 
@@ -92,6 +96,7 @@ func (e *Engine) Analyze(ctx context.Context, inv model.Invocation) (model.Analy
 	}
 	store := source.New(rootKind(inv.Input), rootText(inv.Input))
 	b := e.builder(ctx, store)
+	b.Snapshot = inv.Context.Snapshot
 	actx := contextFrom(inv.Context)
 	root := b.AddNode(model.Node{Kind: model.NodeInvocation, Detail: inv.Tool.Name, Context: actx.NodeContext()})
 
@@ -121,6 +126,7 @@ func (e *Engine) AnalyzeShell(ctx context.Context, src []byte, execution model.E
 	}
 	store := source.New("shell", src)
 	b := e.builder(ctx, store)
+	b.Snapshot = execution.Snapshot
 	actx := contextFrom(execution)
 	root := b.AddNode(model.Node{Kind: model.NodeInvocation, Detail: "shell", Context: actx.NodeContext()})
 	shell.Analyze(b, root, src, "s0", actx)
@@ -132,6 +138,7 @@ func (e *Engine) builder(ctx context.Context, store *source.Store) *analysis.Bui
 	b.Rules, b.Native = e.rules, e.native
 	b.Shell = shell.Analyze
 	b.Program = languages.Analyzer(languages.Enabled{Python: e.cfg.Languages.Python, JavaScript: e.cfg.Languages.JavaScript})
+	b.Resolver = e.cfg.Resolver
 	return b
 }
 

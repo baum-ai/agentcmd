@@ -13,6 +13,7 @@ import (
 	"github.com/lastpersonlabs/toolparser/model"
 	"github.com/lastpersonlabs/toolparser/native"
 	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/toolparser/snapshot"
 )
 
 // Limits bound the work of one analysis. Zero values mean unlimited only in
@@ -65,18 +66,22 @@ type Builder struct {
 	// without importing each other.
 	Program ProgramFunc
 	Shell   ShellFunc
+	// Resolver, when set, supplies script and manifest contents at Snapshot.
+	Resolver snapshot.Resolver
+	Snapshot string
 
-	nodes   []model.Node
-	actions []model.Action
-	diags   []model.Diagnostic
-	partial bool
-	depth   int
-	seen    map[string]bool
+	nodes    []model.Node
+	actions  []model.Action
+	diags    []model.Diagnostic
+	partial  bool
+	depth    int
+	seen     map[string]bool
+	modified map[string]bool
 }
 
 // New creates a builder over a store.
 func New(ctx context.Context, store *source.Store, limits Limits) *Builder {
-	return &Builder{Ctx: ctx, Store: store, Limits: limits, seen: map[string]bool{}}
+	return &Builder{Ctx: ctx, Store: store, Limits: limits, seen: map[string]bool{}, modified: map[string]bool{}}
 }
 
 // AddNode appends a node, assigning its ID. Parent must already exist.
@@ -123,6 +128,7 @@ func (b *Builder) AddAction(node string, a model.Action) bool {
 		}
 	}
 	b.actions = append(b.actions, a)
+	b.trackModified(a)
 	return true
 }
 
@@ -273,6 +279,9 @@ func (b *Builder) RunCommand(parent string, cmd rules.Command, ctx Context) stri
 		if res.Program != nil {
 			b.RunProgram(id, *res.Program, cmd, ctx)
 		}
+		if res.Script != nil {
+			b.resolveScript(id, *res.Script, cmd, ctx)
+		}
 		if res.Wrapped == nil {
 			return id
 		}
@@ -337,13 +346,19 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 		action.Resources = []model.Resource{*p.File}
 	}
 	switch {
-	case p.Mode == "file", p.Mode == "module":
-		// Script contents are not part of the invocation; M6 enrichment may
-		// supply them from a snapshot.
+	case p.Mode == "module":
 		b.AddAction(id, action)
 		b.Node(id).Syntax = model.SyntaxUnsupported
 		b.Diag(model.Diagnostic{Code: model.DiagMissingSnapshot, Severity: model.SeverityInfo, Node: id,
-			Message: fmt.Sprintf("%s program contents are not part of the invocation", p.Language)})
+			Message: fmt.Sprintf("%s module contents are not part of the invocation", p.Language)})
+	case p.Mode == "file":
+		// Script contents are not part of the invocation; a snapshot
+		// resolver may supply them, labeled by provenance.
+		b.AddAction(id, action)
+		b.Node(id).Syntax = model.SyntaxUnsupported
+		if p.File != nil {
+			b.resolveScriptFile(id, p, ctx)
+		}
 	case p.Source == nil || !p.Source.Concrete():
 		action.Kind = model.ProcessUnresolved
 		action.Process.Reason = "program source is not available literally"

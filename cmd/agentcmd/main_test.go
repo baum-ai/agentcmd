@@ -53,6 +53,24 @@ func TestAnalyzeFileJSONAndPartialStatus(t *testing.T) {
 	}
 }
 
+func TestAnalyzeWithSnapshotRoot(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "scripts"), 0o755)
+	os.WriteFile(filepath.Join(dir, "scripts", "clean.sh"), []byte("rm -rf build\n"), 0o644)
+	code, out, _ := exec(t, "bash scripts/clean.sh\n", "analyze", "-cwd", "/w", "-snapshot-root", dir, "-snapshot", "live", "-")
+	if code != 0 || !strings.Contains(out, "filesystem.delete") || !strings.Contains(out, "/w/build") {
+		t.Fatalf("%d %s", code, out)
+	}
+	// Without a snapshot id the content is approximate and says so.
+	code, out, _ = exec(t, "bash scripts/clean.sh\n", "analyze", "-cwd", "/w", "-snapshot-root", dir, "-")
+	if code != 0 || !strings.Contains(out, "approximate") {
+		t.Fatalf("%d %s", code, out)
+	}
+	if code, _, errOut := exec(t, "ls\n", "analyze", "-snapshot-root", dir, "-"); code != 1 || !strings.Contains(errOut, "snapshot-mount") {
+		t.Fatal(errOut)
+	}
+}
+
 func TestRecordsStream(t *testing.T) {
 	lines := []string{
 		`{"id":"c1","tool":{"namespace":"harness","name":"bash"},"input":{"kind":"text","text":"ls src"},"context":{"working_dir":{"known":true,"value":"/w"},"shell":{"known":true,"value":"bash"},"namespace":{"kind":"host"}}}`,

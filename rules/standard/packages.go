@@ -117,9 +117,9 @@ func runScript(cmd rules.Command, mgr, script string) rules.Result {
 		i.Evidence.Assumptions = []string{"intent guessed from the script name; not a verified tool invocation"}
 		res.Actions = append(res.Actions, i)
 	}
-	p := rules.NewAction(model.ProcessUnresolved, model.BasisSyntax)
-	p.Process = &model.ProcessDetail{Executable: cmd.Executable, Args: cmd.Args, Reason: "project script " + verifiedName + " is not resolved"}
-	res.Actions = append(res.Actions, p)
+	// The engine resolves the script body from package.json when a snapshot
+	// resolver is configured; otherwise it records an unresolved execution.
+	res.Script = &rules.Script{Manager: mgr, Name: script, Manifest: "package.json"}
 	return res
 }
 

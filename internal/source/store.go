@@ -32,6 +32,14 @@ func (s *Store) add(kind string, text []byte, d *model.Derivation) string {
 	return id
 }
 
+// External adds a root source supplied by a snapshot resolver.
+func (s *Store) External(kind string, text []byte, origin model.ContentOrigin) string {
+	id := s.add(kind, text, nil)
+	s.sources[len(s.sources)-1].Origin = &origin
+	s.derived += len(text)
+	return id
+}
+
 // Derive adds a source derived from parent. Segments map derived byte ranges
 // to parent ranges; exact says whether the map is byte-precise.
 func (s *Store) Derive(kind string, text []byte, parent string, exact bool, segs []model.Segment) string {

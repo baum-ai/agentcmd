@@ -22,7 +22,7 @@ environment, and builds with `CGO_ENABLED=0`.
 | M3 shell/native rules and CLI | done |
 | M4 embedded Python and JavaScript | done |
 | M5 session ingestion and result association | done |
-| M6 historical snapshot enrichment | planned |
+| M6 historical snapshot enrichment | done |
 | M7 hardening and integration | planned |
 
 ## Development

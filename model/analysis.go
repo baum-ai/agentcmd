@@ -281,6 +281,19 @@ type Source struct {
 	// Text is retained only when small; otherwise the caller owns the bytes.
 	Text    string      `json:"text,omitempty"`
 	Derived *Derivation `json:"derived,omitempty"`
+	// Origin is set for content supplied by a snapshot resolver.
+	Origin *ContentOrigin `json:"origin,omitempty"`
+}
+
+// ContentOrigin is the provenance of resolver-supplied content.
+type ContentOrigin struct {
+	Path      string    `json:"path"`
+	Namespace Namespace `json:"namespace"`
+	Snapshot  string    `json:"snapshot,omitempty"`
+	Digest    string    `json:"digest,omitempty"`
+	// Approximate means the content is not known to be what ran: the
+	// snapshot was unknown or differs from the invocation's.
+	Approximate bool `json:"approximate,omitempty"`
 }
 
 // Derivation maps a derived source back into its parent.

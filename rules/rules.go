@@ -59,11 +59,22 @@ type Program struct {
 	Namespace *model.Namespace
 }
 
+// Script asks the engine to resolve a project script from a package
+// manifest (package.json "scripts") when a snapshot resolver is available.
+type Script struct {
+	Manager  string
+	Name     string
+	Manifest string // manifest file name relative to the working directory
+}
+
 // Result is what a rule produces for one command.
 type Result struct {
 	Actions []model.Action
 	// Program requests analysis of nested source.
 	Program *Program
+	// Script requests resolution of a project script; without a resolver
+	// the engine records an unresolved execution.
+	Script *Script
 	// Wrapped asks the engine to analyze the inner command instead; the
 	// wrapper is recorded in the command's ancestry.
 	Wrapped *Command

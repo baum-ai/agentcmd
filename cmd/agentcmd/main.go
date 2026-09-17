@@ -3,7 +3,7 @@
 // deterministic text or JSON. It never executes input and by default does
 // not print raw source.
 //
-//	agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
+//	agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-snapshot-root DIR [-snapshot-mount PATH] [-snapshot ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
 //	agentcmd records [-adapter NAME] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
 //	agentcmd version
 package main
@@ -24,6 +24,7 @@ import (
 	nstd "github.com/lastpersonlabs/toolparser/native/standard"
 	"github.com/lastpersonlabs/toolparser/render"
 	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/toolparser/snapshot"
 	"github.com/lastpersonlabs/toolparser/stream"
 )
 
@@ -32,7 +33,7 @@ func main() {
 }
 
 const usage = `usage:
-  agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
+  agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-snapshot-root DIR [-snapshot-mount PATH] [-snapshot ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
   agentcmd records [-adapter canonical|openai|anthropic|gemini] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
   agentcmd version
 `
@@ -80,6 +81,9 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	format := fs.String("format", "text", "output format: text or json")
 	structure := fs.Bool("structure", false, "print the execution tree")
 	showSource := fs.Bool("show-source", false, "include retained source text (may reveal secrets)")
+	snapRoot := fs.String("snapshot-root", "", "directory whose contents stand for the working tree at -snapshot (read-only, root-confined)")
+	snapMount := fs.String("snapshot-mount", "", "path in the command's namespace that -snapshot-root corresponds to (default: -cwd)")
+	snapID := fs.String("snapshot", "", "snapshot identity the command ran against; content from -snapshot-root at another identity is labeled approximate")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -93,7 +97,19 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer in.Close()
-	e, err := newEngine()
+	cfg := toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: toolparser.Languages{Python: true, JavaScript: true}}
+	if *snapRoot != "" {
+		mount := *snapMount
+		if mount == "" {
+			mount = *cwd
+		}
+		if mount == "" {
+			fmt.Fprintln(stderr, "analyze: -snapshot-root needs -snapshot-mount or -cwd")
+			return 1
+		}
+		cfg.Resolver = &snapshot.Dir{Root: *snapRoot, Mount: mount, Snapshot: *snapID}
+	}
+	e, err := toolparser.New(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -103,7 +119,7 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	ec := model.ExecutionContext{Shell: model.KnownFact(*shell, "configured"), Namespace: parseNamespace(*ns)}
+	ec := model.ExecutionContext{Shell: model.KnownFact(*shell, "configured"), Namespace: parseNamespace(*ns), Snapshot: *snapID}
 	if *cwd != "" {
 		ec.WorkingDir = model.KnownFact(*cwd, "configured")
 	}

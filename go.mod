@@ -1,3 +1,8 @@
 module github.com/lastpersonlabs/toolparser
 
 go 1.27.1
+
+require (
+	github.com/odvcencio/gotreesitter v0.52.0
+	mvdan.cc/sh/v3 v3.14.1
+)

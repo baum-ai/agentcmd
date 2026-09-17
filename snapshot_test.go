@@ -1,14 +1,14 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
-	"github.com/lastpersonlabs/toolparser/snapshot"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/lastpersonlabs/agentcmd/snapshot"
 )
 
 func snapEngine(t *testing.T, r snapshot.Resolver) *Engine {

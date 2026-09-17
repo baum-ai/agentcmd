@@ -1,4 +1,4 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

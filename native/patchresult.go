@@ -1,8 +1,8 @@
 package native
 
 import (
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/native/patch"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/native/patch"
 )
 
 // PatchResult turns patch text into native.patch plus per-file operations.

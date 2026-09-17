@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/rules"
 	"mvdan.cc/sh/v3/syntax"
 )
 

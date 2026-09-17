@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // OptionSpec is a documented option grammar for one command.

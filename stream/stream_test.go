@@ -6,16 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/adapters"
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/adapters"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
-func engine(t *testing.T) *toolparser.Engine {
+func engine(t *testing.T) *agentcmd.Engine {
 	t.Helper()
-	e, err := toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
+	e, err := agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
 	if err != nil {
 		t.Fatal(err)
 	}

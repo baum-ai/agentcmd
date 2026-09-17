@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/adapters"
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/adapters"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 // generator streams synthetic canonical records without materializing the
@@ -54,7 +54,7 @@ func (g *generator) Read(p []byte) (int, error) {
 }
 
 func benchStream(b *testing.B, bytes int) {
-	e, _ := toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
+	e, _ := agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
 	p, _ := New(e, Options{Adapter: adapters.Canonical{}})
 	b.SetBytes(int64(bytes))
 	b.ReportAllocs()
@@ -75,7 +75,7 @@ func TestRetainedMemoryDoesNotGrowWithStreamLength(t *testing.T) {
 	if testing.Short() {
 		t.Skip("memory retention test skipped in -short mode")
 	}
-	e, _ := toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
+	e, _ := agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
 	p, _ := New(e, Options{Adapter: adapters.Canonical{}})
 	measure := func(bytes int) uint64 {
 		if err := p.Process(context.Background(), &generator{remaining: bytes}, func(model.Event) error { return nil }); err != nil {

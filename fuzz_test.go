@@ -1,4 +1,4 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // checkInvariants asserts the release invariants on any analysis: it

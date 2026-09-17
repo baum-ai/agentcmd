@@ -3,8 +3,8 @@ package standard
 import (
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/rules"
 )
 
 // wrapper builds a rule that strips a launcher and hands the inner command

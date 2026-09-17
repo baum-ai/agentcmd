@@ -5,17 +5,17 @@ import (
 	"strings"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/adapters"
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/adapters"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func FuzzProcess(f *testing.F) {
 	f.Add("{\"type\":\"response.output_item.added\",\"item\":{\"type\":\"function_call\",\"id\":\"a\",\"name\":\"Bash\"}}\n{\"type\":\"response.function_call_arguments.done\",\"item_id\":\"a\",\"arguments\":\"{\\\"command\\\":\\\"ls\\\"}\"}\n{\"type\":\"function_call_output\",\"call_id\":\"a\",\"output\":\"x\"}\n")
 	f.Add("garbage\n\n{\"type\":\"function_call_output\",\"call_id\":\"zz\",\"output\":\"orphan\"}\n")
-	e, _ := toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Limits: toolparser.Limits{SyntaxNodes: 2000, Actions: 200}})
+	e, _ := agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Limits: agentcmd.Limits{SyntaxNodes: 2000, Actions: 200}})
 	f.Fuzz(func(t *testing.T, input string) {
 		p, _ := New(e, Options{Adapter: adapters.OpenAI{}, ToolNamespace: "harness", FrameBytes: 4096, BufferBytes: 8192, ActiveCalls: 4, Window: 8})
 		var last int

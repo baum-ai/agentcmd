@@ -4,8 +4,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/rules"
 )
 
 // shellRule extracts nested shell programs: sh -c 'string', bash script.sh,

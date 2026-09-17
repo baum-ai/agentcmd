@@ -1,13 +1,13 @@
 // Package standard holds the built-in command rules. Callers select it
-// explicitly: toolparser.Config{Rules: standard.Rules()}.
+// explicitly: agentcmd.Config{Rules: standard.Rules()}.
 //
 // Every rule documents its option grammar and states its boundary: recognizing
 // a file operand is not proof that the file was accessed.
 package standard
 
 import (
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/rules"
 )
 
 // Version of the standard ruleset as a whole.

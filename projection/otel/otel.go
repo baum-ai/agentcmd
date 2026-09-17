@@ -8,7 +8,7 @@ package otel
 import (
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // SemconvVersion pins the semantic-convention release the attribute names

@@ -5,7 +5,7 @@ package source
 import (
 	"fmt"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // Store holds the sources of one analysis. s0 is the invocation input.

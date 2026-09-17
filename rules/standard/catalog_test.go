@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/rules"
+	"github.com/lastpersonlabs/agentcmd/rules"
 )
 
 var update = flag.Bool("update", false, "rewrite docs/rules.md")

@@ -9,11 +9,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/internal/source"
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/native"
-	"github.com/lastpersonlabs/toolparser/rules"
-	"github.com/lastpersonlabs/toolparser/snapshot"
+	"github.com/lastpersonlabs/agentcmd/internal/source"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/native"
+	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/lastpersonlabs/agentcmd/snapshot"
 )
 
 // Limits bound the work of one analysis. Zero values mean unlimited only in

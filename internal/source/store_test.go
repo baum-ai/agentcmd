@@ -3,7 +3,7 @@ package source
 import (
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 func TestNestedDerivationMapsToRoot(t *testing.T) {

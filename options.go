@@ -1,6 +1,6 @@
-package toolparser
+package agentcmd
 
-import "github.com/lastpersonlabs/toolparser/internal/analysis"
+import "github.com/lastpersonlabs/agentcmd/internal/analysis"
 
 // Limits bound the work of one analysis. See docs/compatibility.md for the
 // meaning of each limit and whether it is hard or cooperative.

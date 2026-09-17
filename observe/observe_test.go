@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/model"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/model"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func analyze(t *testing.T, src string) model.Analysis {
 	t.Helper()
-	e, err := toolparser.New(toolparser.Config{Rules: rstd.Rules()})
+	e, err := agentcmd.New(agentcmd.Config{Rules: rstd.Rules()})
 	if err != nil {
 		t.Fatal(err)
 	}

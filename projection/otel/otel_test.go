@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/observe"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/observe"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func TestProjectUsesEventsNotChildSpans(t *testing.T) {
-	e, _ := toolparser.New(toolparser.Config{Rules: rstd.Rules()})
+	e, _ := agentcmd.New(agentcmd.Config{Rules: rstd.Rules()})
 	inv := model.Invocation{ID: "i", Session: "s", CallID: "c", Provider: "anthropic", Harness: "claude-code", Tool: model.ToolIdentity{Namespace: "harness", Name: "bash"},
 		Input: model.Input{Kind: model.InputText, Text: "cat a"}, Context: model.ExecutionContext{WorkingDir: model.KnownFact("/w", "reported"), Namespace: model.Namespace{Kind: model.NamespaceHost}}}
 	// Text input without a binding for "bash" in this engine stays opaque;

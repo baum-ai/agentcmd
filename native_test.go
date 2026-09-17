@@ -1,14 +1,14 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/native"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/native"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func nativeInv(id, tool, args string) model.Invocation {

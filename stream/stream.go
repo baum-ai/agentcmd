@@ -11,9 +11,9 @@ import (
 	"io"
 	"strings"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/adapters"
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/adapters"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // Options configure a Processor. Zero values take the documented defaults.
@@ -40,19 +40,19 @@ type Options struct {
 
 // Processor turns a record stream into events.
 type Processor struct {
-	engine *toolparser.Engine
+	engine *agentcmd.Engine
 	opts   Options
 }
 
 // New validates options.
-func New(engine *toolparser.Engine, opts Options) (*Processor, error) {
+func New(engine *agentcmd.Engine, opts Options) (*Processor, error) {
 	if engine == nil {
 		return nil, errors.New("stream: engine is required")
 	}
 	if opts.Adapter == nil {
 		opts.Adapter = adapters.Canonical{}
 	}
-	d := toolparser.DefaultLimits()
+	d := agentcmd.DefaultLimits()
 	if opts.FrameBytes <= 0 {
 		opts.FrameBytes = d.InputFrameBytes
 	}
@@ -268,7 +268,7 @@ func (st *state) complete(ctx context.Context, c adapters.Call, k key, positiona
 		inv.Lifecycle = append(inv.Lifecycle, carried.lifecyle...)
 	}
 	a, err := st.p.engine.Analyze(ctx, inv)
-	if err != nil && !errors.Is(err, toolparser.ErrPartial) {
+	if err != nil && !errors.Is(err, agentcmd.ErrPartial) {
 		return st.emit(model.Event{Kind: model.EventDiagnostic, Sequence: st.seq, Invocation: inv.ID, Diagnostic: &model.Diagnostic{Code: "invalid_record", Severity: model.SeverityError, Message: err.Error()}})
 	}
 	if err := st.emit(model.Event{Kind: model.EventAnalysis, Sequence: st.seq, Source: inv.Source, Invocation: inv.ID, Analysis: &a}); err != nil {

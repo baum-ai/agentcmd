@@ -1,10 +1,10 @@
-// Package toolparser analyzes coding-agent tool invocations without executing
+// Package agentcmd analyzes coding-agent tool invocations without executing
 // them. It produces a deterministic, evidence-backed model.Analysis.
 //
 // The root package depends only on the model, the rule/native contracts and
 // the internal frontends. Built-in rules (rules/standard), bindings
 // (native/standard), adapters, streaming and rendering are opt-in packages.
-package toolparser
+package agentcmd
 
 import (
 	"context"
@@ -13,15 +13,15 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/internal/analysis"
-	"github.com/lastpersonlabs/toolparser/internal/languages"
-	"github.com/lastpersonlabs/toolparser/internal/languages/treesitter"
-	"github.com/lastpersonlabs/toolparser/internal/shell"
-	"github.com/lastpersonlabs/toolparser/internal/source"
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/native"
-	"github.com/lastpersonlabs/toolparser/rules"
-	"github.com/lastpersonlabs/toolparser/snapshot"
+	"github.com/lastpersonlabs/agentcmd/internal/analysis"
+	"github.com/lastpersonlabs/agentcmd/internal/languages"
+	"github.com/lastpersonlabs/agentcmd/internal/languages/treesitter"
+	"github.com/lastpersonlabs/agentcmd/internal/shell"
+	"github.com/lastpersonlabs/agentcmd/internal/source"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/native"
+	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/lastpersonlabs/agentcmd/snapshot"
 )
 
 // Version of the analyzer, recorded in every result.
@@ -64,11 +64,11 @@ func New(cfg Config) (*Engine, error) {
 	}
 	rr, err := rules.NewRegistry(cfg.Rules...)
 	if err != nil {
-		return nil, fmt.Errorf("toolparser: %w", err)
+		return nil, fmt.Errorf("agentcmd: %w", err)
 	}
 	nr, err := native.NewRegistry(cfg.Native...)
 	if err != nil {
-		return nil, fmt.Errorf("toolparser: %w", err)
+		return nil, fmt.Errorf("agentcmd: %w", err)
 	}
 	e := &Engine{cfg: cfg, rules: rr, native: nr}
 	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
@@ -92,7 +92,7 @@ func (e *Engine) Analyze(ctx context.Context, inv model.Invocation) (model.Analy
 		return model.Analysis{}, err
 	}
 	if n := inputSize(inv.Input); n > e.cfg.Limits.InputFrameBytes {
-		return model.Analysis{}, fmt.Errorf("toolparser: input of %d bytes exceeds frame limit %d", n, e.cfg.Limits.InputFrameBytes)
+		return model.Analysis{}, fmt.Errorf("agentcmd: input of %d bytes exceeds frame limit %d", n, e.cfg.Limits.InputFrameBytes)
 	}
 	store := source.New(rootKind(inv.Input), rootText(inv.Input))
 	b := e.builder(ctx, store)
@@ -122,7 +122,7 @@ func (e *Engine) Analyze(ctx context.Context, inv model.Invocation) (model.Analy
 func (e *Engine) AnalyzeShell(ctx context.Context, src []byte, execution model.ExecutionContext) (model.Analysis, error) {
 	inv := model.Invocation{ID: "shell", Tool: model.ToolIdentity{Name: "shell"}, Input: model.Input{Kind: model.InputText, Text: string(src)}, Context: execution}
 	if len(src) > e.cfg.Limits.InputFrameBytes {
-		return model.Analysis{}, fmt.Errorf("toolparser: input of %d bytes exceeds frame limit %d", len(src), e.cfg.Limits.InputFrameBytes)
+		return model.Analysis{}, fmt.Errorf("agentcmd: input of %d bytes exceeds frame limit %d", len(src), e.cfg.Limits.InputFrameBytes)
 	}
 	store := source.New("shell", src)
 	b := e.builder(ctx, store)
@@ -148,7 +148,7 @@ func (e *Engine) finish(ctx context.Context, b *analysis.Builder, inv *model.Inv
 	a.Invocation = inv.ID
 	a.Versions = e.versions()
 	if err := a.Validate(); err != nil {
-		return model.Analysis{}, fmt.Errorf("toolparser: internal error: produced invalid analysis: %w", err)
+		return model.Analysis{}, fmt.Errorf("agentcmd: internal error: produced invalid analysis: %w", err)
 	}
 	if err := ctx.Err(); err != nil {
 		a.Partial = true

@@ -4,7 +4,7 @@
 // inference: matching sources to commits stays outside this library.
 package recountable
 
-import "github.com/lastpersonlabs/toolparser/model"
+import "github.com/lastpersonlabs/agentcmd/model"
 
 // ProjectionVersion changes when the record shape changes.
 const ProjectionVersion = "1"

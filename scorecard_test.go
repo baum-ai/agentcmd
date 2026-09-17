@@ -1,4 +1,4 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/internal/corpus"
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/internal/corpus"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // TestScorecard computes the release scorecard over the corpus and, with

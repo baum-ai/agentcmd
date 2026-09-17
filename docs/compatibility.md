@@ -52,7 +52,7 @@ imported.
 | Python | pathlib/os/shutil/open/subprocess/glob subset in `docs/semantics.md` | classes, dynamic attribute access, other libraries |
 | JavaScript | fs/fs.promises/child_process/path subset in `docs/semantics.md` | TypeScript-only syntax, non-builtin modules, computed member access |
 
-## Limits (defaults in `toolparser.DefaultLimits`)
+## Limits (defaults in `agentcmd.DefaultLimits`)
 
 | Limit | Value | Kind |
 |---|---|---|

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // ShellSource asks the engine to analyze a shell command string carried in a

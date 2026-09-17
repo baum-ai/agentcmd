@@ -1,4 +1,4 @@
-# toolparser (agentcmd)
+# agentcmd
 
 A pure-Go library and reference CLI that turns coding-agent tool invocations
 into a deterministic, evidence-backed account of the operations they request,
@@ -6,7 +6,7 @@ the operations their code may perform, and the outcomes actually reported or
 observed.
 
 The design is in `agentcmd-implementation-plan.md`; decisions are recorded in
-`docs/adr/`. The module path is `github.com/lastpersonlabs/toolparser`; the
+`docs/adr/`. The module path is `github.com/lastpersonlabs/agentcmd`; the
 reference CLI is `cmd/agentcmd`.
 
 The library never executes input, never reads the host filesystem or
@@ -57,10 +57,10 @@ go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 ## Usage
 
 ```go
-e, err := toolparser.New(toolparser.Config{
+e, err := agentcmd.New(agentcmd.Config{
     Rules:     standard.Rules(),      // rules/standard
     Native:    nativestd.Bindings(),  // native/standard
-    Languages: toolparser.Languages{Python: true, JavaScript: true},
+    Languages: agentcmd.Languages{Python: true, JavaScript: true},
 })
 analysis, err := e.AnalyzeShell(ctx, []byte("cat README.md"), model.ExecutionContext{
     WorkingDir: model.KnownFact("/workspace/project", "reported"),

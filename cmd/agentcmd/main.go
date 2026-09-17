@@ -18,14 +18,14 @@ import (
 	"os"
 	"strings"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/adapters"
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	"github.com/lastpersonlabs/toolparser/render"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
-	"github.com/lastpersonlabs/toolparser/snapshot"
-	"github.com/lastpersonlabs/toolparser/stream"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/adapters"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	"github.com/lastpersonlabs/agentcmd/render"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/lastpersonlabs/agentcmd/stream"
 )
 
 func main() {
@@ -51,7 +51,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "records":
 		return records(args[1:], stdin, stdout, stderr)
 	case "version":
-		fmt.Fprintf(stdout, "agentcmd %s schema %s\n", toolparser.Version, model.SchemaVersion)
+		fmt.Fprintf(stdout, "agentcmd %s schema %s\n", agentcmd.Version, model.SchemaVersion)
 		return 0
 	case "-h", "--help", "help":
 		fmt.Fprint(stdout, usage)
@@ -61,8 +61,8 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return 1
 }
 
-func newEngine() (*toolparser.Engine, error) {
-	return toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: toolparser.Languages{Python: true, JavaScript: true}})
+func newEngine() (*agentcmd.Engine, error) {
+	return agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: agentcmd.Languages{Python: true, JavaScript: true}})
 }
 
 func openInput(name string, stdin io.Reader) (io.ReadCloser, error) {
@@ -97,7 +97,7 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer in.Close()
-	cfg := toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: toolparser.Languages{Python: true, JavaScript: true}}
+	cfg := agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: agentcmd.Languages{Python: true, JavaScript: true}}
 	if *snapRoot != "" {
 		mount := *snapMount
 		if mount == "" {
@@ -109,12 +109,12 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		}
 		cfg.Resolver = &snapshot.Dir{Root: *snapRoot, Mount: mount, Snapshot: *snapID}
 	}
-	e, err := toolparser.New(cfg)
+	e, err := agentcmd.New(cfg)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	src, err := io.ReadAll(io.LimitReader(in, int64(toolparser.DefaultLimits().InputFrameBytes)+1))
+	src, err := io.ReadAll(io.LimitReader(in, int64(agentcmd.DefaultLimits().InputFrameBytes)+1))
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
@@ -124,7 +124,7 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		ec.WorkingDir = model.KnownFact(*cwd, "configured")
 	}
 	a, err := e.AnalyzeShell(context.Background(), src, ec)
-	if err != nil && !errors.Is(err, toolparser.ErrPartial) {
+	if err != nil && !errors.Is(err, agentcmd.ErrPartial) {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}

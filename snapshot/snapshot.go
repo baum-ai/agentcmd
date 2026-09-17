@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // Request asks for one file.

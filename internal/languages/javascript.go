@@ -5,7 +5,7 @@ import (
 
 	ts "github.com/odvcencio/gotreesitter"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // jsFrontend implements the JavaScript subset: require/import bindings,

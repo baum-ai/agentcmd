@@ -1,14 +1,14 @@
 // Package standard holds built-in native tool bindings captured from common
 // harness profiles. Callers select it explicitly:
-// toolparser.Config{Native: standard.Bindings()}.
+// agentcmd.Config{Native: standard.Bindings()}.
 package standard
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/native"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/native"
 )
 
 // Version of the standard binding set.

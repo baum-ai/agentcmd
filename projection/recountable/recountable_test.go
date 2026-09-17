@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	toolparser "github.com/lastpersonlabs/toolparser"
-	"github.com/lastpersonlabs/toolparser/model"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd"
+	"github.com/lastpersonlabs/agentcmd/model"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func TestProjectFlattensWithoutSourceText(t *testing.T) {
-	e, _ := toolparser.New(toolparser.Config{Rules: rstd.Rules()})
+	e, _ := agentcmd.New(agentcmd.Config{Rules: rstd.Rules()})
 	a, _ := e.AnalyzeShell(context.Background(), []byte("cd x && make test; secret_cmd --token abc"), model.ExecutionContext{WorkingDir: model.KnownFact("/w", "reported"), Namespace: model.Namespace{Kind: model.NamespaceHost}})
 	rec := Project(&a)
 	raw, _ := json.Marshal(rec)

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 func TestTextEscapesUntrustedAndKeepsVerbs(t *testing.T) {

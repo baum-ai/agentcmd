@@ -1,4 +1,4 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"

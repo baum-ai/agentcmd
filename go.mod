@@ -1,4 +1,4 @@
-module github.com/lastpersonlabs/toolparser
+module github.com/lastpersonlabs/agentcmd
 
 go 1.27.1
 

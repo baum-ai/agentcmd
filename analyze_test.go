@@ -1,4 +1,4 @@
-package toolparser
+package agentcmd
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lastpersonlabs/toolparser/internal/corpus"
-	"github.com/lastpersonlabs/toolparser/model"
-	nstd "github.com/lastpersonlabs/toolparser/native/standard"
-	"github.com/lastpersonlabs/toolparser/rules"
-	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/agentcmd/internal/corpus"
+	"github.com/lastpersonlabs/agentcmd/model"
+	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
+	"github.com/lastpersonlabs/agentcmd/rules"
+	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
 )
 
 func engine(t *testing.T) *Engine {

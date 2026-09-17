@@ -9,7 +9,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/lastpersonlabs/toolparser/model"
+	"github.com/lastpersonlabs/agentcmd/model"
 )
 
 // Command is a simple command as seen by a rule.

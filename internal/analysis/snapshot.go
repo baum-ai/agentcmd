@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/toolparser/model"
-	"github.com/lastpersonlabs/toolparser/rules"
-	"github.com/lastpersonlabs/toolparser/snapshot"
+	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/lastpersonlabs/agentcmd/snapshot"
 )
 
 // trackModified records resources an action may change, so later script

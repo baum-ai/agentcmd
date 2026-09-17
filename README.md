@@ -5,25 +5,15 @@ into a deterministic, evidence-backed account of the operations they request,
 the operations their code may perform, and the outcomes actually reported or
 observed.
 
-The design is in `agentcmd-implementation-plan.md`; decisions are recorded in
-`docs/adr/`. The module path is `github.com/lastpersonlabs/agentcmd`; the
-reference CLI is `cmd/agentcmd`.
+It can analyze a single shell command, a stream of provider tool-call records
+(OpenAI, Anthropic, Gemini), or a coding agent's own on-disk session
+transcript (Claude Code, Codex CLI) directly — no export step needed.
+
+The module path is `github.com/lastpersonlabs/agentcmd`; the reference CLI is
+`cmd/agentcmd`.
 
 The library never executes input, never reads the host filesystem or
 environment, and builds with `CGO_ENABLED=0`.
-
-## Status
-
-| Milestone | State |
-|---|---|
-| M0 evidence, model decisions, dependency qualification | done |
-| M1 canonical model and library skeleton | done |
-| M2 shell structure, state, guarded actions | done |
-| M3 shell/native rules and CLI | done |
-| M4 embedded Python and JavaScript | done |
-| M5 session ingestion and result association | done |
-| M6 historical snapshot enrichment | done |
-| M7 hardening and integration | done (v1.0.0) |
 
 ## Documentation
 
@@ -75,6 +65,8 @@ bindings; text inputs are analyzed as shell only when a binding says so.
 
 ## CLI
 
+Analyze a single shell command:
+
 ```sh
 go run ./cmd/agentcmd analyze -cwd /workspace/project -structure - <<'EOF2'
 cd service && python - <<'PY'
@@ -84,8 +76,24 @@ PY
 EOF2
 ```
 
-See `docs/cli.md` and `docs/ingestion.md` for record streams:
+Analyze a coding agent's own session transcript, in place:
 
 ```sh
-agentcmd records -adapter openai -tool-namespace harness -format jsonl session.jsonl
+# Claude Code: ~/.claude/projects/<slug>/<session-id>.jsonl
+agentcmd records -adapter claude-code -tool-namespace harness -format jsonl \
+  ~/.claude/projects/<slug>/<session-id>.jsonl
+
+# Codex CLI: ~/.codex/sessions/<year>/<month>/<day>/rollout-*.jsonl
+agentcmd records -adapter codex -tool-namespace harness -format jsonl \
+  ~/.codex/sessions/<year>/<month>/<day>/rollout-*.jsonl
 ```
+
+**`-tool-namespace harness` is required** for `claude-code`, `codex`, and the
+raw provider adapters (`openai`, `anthropic`, `gemini`). A transcript only
+records the transport's own namespace (e.g. `anthropic`), never the harness
+that issued the call; without `-tool-namespace harness` to rebind it, every
+native tool call (`Bash`, `Read`, `exec_command`, …) is reported as an opaque
+`unknown_tool` diagnostic — decoded, but with its input left unanalyzed.
+
+See `docs/cli.md` and `docs/ingestion.md` for the full record-stream
+reference, including the other adapters and streaming/association semantics.

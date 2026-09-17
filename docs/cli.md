@@ -30,12 +30,20 @@ or I/O error.
 
 Reads newline-delimited records in the format named by `-adapter` (see
 `docs/ingestion.md`) and emits one `model.Event` per completed call, result
-or problem. Provider records need `-tool-namespace harness` to bind against
-the standard harness bindings; without it calls stay opaque. `-cwd` and
-`-shell` supply the execution context for records that carry none. Text
-output prints `record N:` blocks; `-format jsonl` emits the events. Records
-over the frame limit (8 MiB) are skipped without being buffered. Exit status
-is `2` when any event was a diagnostic, orphan or partial analysis.
+or problem. `-cwd` and `-shell` supply the execution context for records
+that carry none. Text output prints `record N:` blocks; `-format jsonl`
+emits the events. Records over the frame limit (8 MiB) are skipped without
+being buffered. Exit status is `2` when any event was a diagnostic, orphan
+or partial analysis.
+
+**Always pass `-tool-namespace harness`** with `-adapter claude-code`,
+`-adapter codex`, `-adapter openai`, `-adapter anthropic` or `-adapter
+gemini`. These adapters carry the transport's own namespace on every call
+(`anthropic`, `openai`, …), never the harness that issued it, and the
+standard bindings for `Bash`, `Read`, `exec_command` and the rest are only
+registered under the harness namespace. Omit the flag and every native call
+is left in the transport namespace, unmatched, and reported as an opaque
+`unknown_tool` diagnostic — decoded, but with its input left unanalyzed.
 
 ## Reading the text output
 

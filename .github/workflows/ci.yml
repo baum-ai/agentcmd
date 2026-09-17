@@ -1,0 +1,31 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  pure-go:
+    runs-on: ubuntu-latest
+    env: { CGO_ENABLED: "0" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: go vet ./...
+      - run: go build ./...
+      - run: go test ./...
+      - run: test -z "$(gofmt -l .)"
+  race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: go test -race -short ./...
+  fuzz-smoke:
+    runs-on: ubuntu-latest
+    env: { CGO_ENABLED: "0" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version-file: go.mod }
+      - run: go test . -run xxx -fuzz FuzzAnalyzeShell -fuzztime 60s
+      - run: go test ./stream -run xxx -fuzz FuzzProcess -fuzztime 30s
+      - run: go test ./adapters -run xxx -fuzz FuzzDecode -fuzztime 30s

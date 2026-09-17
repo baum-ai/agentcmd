@@ -23,7 +23,29 @@ environment, and builds with `CGO_ENABLED=0`.
 | M4 embedded Python and JavaScript | done |
 | M5 session ingestion and result association | done |
 | M6 historical snapshot enrichment | done |
-| M7 hardening and integration | planned |
+| M7 hardening and integration | done (v1.0.0) |
+
+## Documentation
+
+| Topic | File |
+|---|---|
+| Decisions | `docs/adr/` |
+| Parser qualification, limits, certified subsets | `docs/compatibility.md` |
+| Shell semantics and assumptions | `docs/shell-semantics.md` |
+| Python and JavaScript subsets | `docs/semantics.md` |
+| Command rule catalog | `docs/rules.md` |
+| Adapters, streaming, observations | `docs/ingestion.md` |
+| Snapshot enrichment | `docs/snapshots.md` |
+| CLI | `docs/cli.md` |
+| Benchmarks and regression budget | `docs/benchmarks.md` |
+| Scorecard and corpus report | `docs/scorecard.md`, `docs/corpus-report.md` |
+| Versioning, privacy, dependencies | `docs/versioning.md` |
+| Threat model | `docs/threat-model.md` |
+| Contributing | `docs/contributing.md` |
+
+Projections for integrations live in `projection/otel` (OpenTelemetry GenAI
+attributes, no SDK dependency) and `projection/recountable` (flat indexable
+records). Neither is imported by the root package.
 
 ## Development
 

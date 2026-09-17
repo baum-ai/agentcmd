@@ -1,9 +1,9 @@
 {
-  "schema_version": "0.1.0",
-  "id": "an_f3329bf2cde86c4755243864",
+  "schema_version": "1.0.0",
+  "id": "an_9a965e09037fe9e4f97310ef",
   "invocation": "shell",
   "versions": {
-    "analyzer": "0.1.0",
+    "analyzer": "1.0.0",
     "ruleset": "9695ac7542c7d821/9e5c4870cf4a3144",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },

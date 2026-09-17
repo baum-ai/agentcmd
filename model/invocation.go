@@ -11,7 +11,7 @@ import (
 
 // SchemaVersion is the version of the JSON contract produced and accepted by
 // this package. Readers accept the same major version.
-const SchemaVersion = "0.1.0"
+const SchemaVersion = "1.0.0"
 
 // Invocation is one tool call as requested by an agent, with whatever
 // context and lifecycle evidence the source supplied.

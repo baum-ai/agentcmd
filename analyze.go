@@ -25,7 +25,7 @@ import (
 )
 
 // Version of the analyzer, recorded in every result.
-const Version = "0.1.0"
+const Version = "1.0.0"
 
 // Config is frozen by New. The zero value analyzes structure only: no
 // command rules, no native bindings, no embedded languages.

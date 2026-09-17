@@ -163,6 +163,11 @@ func (l *lowerer) stmt(parent string, s *syntax.Stmt, st *state, ctx ctxState) (
 	case *syntax.ForClause:
 		return l.forClause(parent, s, c, st, ctx), false
 	case *syntax.FuncDecl:
+		if c.Name == nil || c.Body == nil {
+			// Anonymous (zsh-style) function: its body runs immediately in
+			// some dialects; report it rather than guess.
+			return l.b.Unknown(parent, &sp, l.actx(st, ctx), model.DiagUnsupported, "anonymous function"), false
+		}
 		id = l.b.AddNode(model.Node{Parent: parent, Kind: model.NodeFunction, Span: &sp, Guard: ctx.guard, Reach: model.ReachLatent, Syntax: model.SyntaxParsed, Detail: c.Name.Value, Context: nodeContext(st, ctx)})
 		st.funcs[c.Name.Value] = &function{decl: c, node: id}
 		return id, false

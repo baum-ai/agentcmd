@@ -40,11 +40,11 @@ func TestAnalyzeFileJSONAndPartialStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 	code, out, _ := exec(t, "", "analyze", "-format", "json", "-cwd", "/w", path)
-	if code != 2 {
-		t.Fatalf("partial analysis must exit 2, got %d", code)
+	if code != 0 {
+		t.Fatalf("python is analyzed by the CLI engine, got %d: %s", code, out)
 	}
 	var a map[string]any
-	if err := json.Unmarshal([]byte(out), &a); err != nil || a["partial"] != true {
+	if err := json.Unmarshal([]byte(out), &a); err != nil || a["partial"] == true {
 		t.Fatalf("%v %s", err, out)
 	}
 	code, out, _ = exec(t, "echo )", "analyze", "-")

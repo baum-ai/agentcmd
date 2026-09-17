@@ -49,8 +49,8 @@ imported.
 |---|---|---|
 | Shell dialects | POSIX sh, Bash | Zsh, mksh, fish (parse or refuse; semantics unsupported) |
 | Shell constructs | simple commands, assignments, lists, pipelines, subshells, groups, if/case, while/until/for, functions, background, redirections, here-docs, command substitution | arithmetic evaluation, arrays beyond literal indexing, traps, `eval`, aliases, coprocesses |
-| Python | see `docs/semantics.md` (M4) | everything else remains `unknown` |
-| JavaScript | see `docs/semantics.md` (M4) | everything else remains `unknown` |
+| Python | pathlib/os/shutil/open/subprocess/glob subset in `docs/semantics.md` | classes, dynamic attribute access, other libraries |
+| JavaScript | fs/fs.promises/child_process/path subset in `docs/semantics.md` | TypeScript-only syntax, non-builtin modules, computed member access |
 
 ## Limits (defaults in `toolparser.DefaultLimits`)
 

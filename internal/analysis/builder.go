@@ -371,8 +371,10 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 			return id
 		}
 		defer b.Leave()
+		// Statements inside the program inherit the program's reachability;
+		// the guard itself belongs to the program node.
 		inner := ctx
-		inner.Guard, inner.Reach = nil, model.ReachAlways
+		inner.Guard = nil
 		inner.Dialect, inner.Positional = p.Dialect, p.Args
 		inner.Env = mergeEnv(ctx.Env, cmd.Env)
 		if p.Language == "shell" && b.Shell != nil {

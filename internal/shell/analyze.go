@@ -43,6 +43,10 @@ func Analyze(b *analysis.Builder, parent string, src []byte, sourceID string, ct
 	}
 	l := &lowerer{b: b, src: sourceID, text0: src, dialect: d, ns: ctx.Namespace, env: ctx.Env, calling: map[string]int{}}
 	st := newState(ctx.Cwd)
-	l.stmts(id, f.Stmts, st, ctxState{reach: model.ReachAlways, env: ctx.Env, positional: ctx.Positional, namespace: ctx.Namespace})
+	reach := ctx.Reach
+	if reach == "" {
+		reach = model.ReachAlways
+	}
+	l.stmts(id, f.Stmts, st, ctxState{reach: reach, env: ctx.Env, positional: ctx.Positional, namespace: ctx.Namespace})
 	return id
 }

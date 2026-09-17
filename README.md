@@ -20,7 +20,7 @@ environment, and builds with `CGO_ENABLED=0`.
 | M1 canonical model and library skeleton | done |
 | M2 shell structure, state, guarded actions | done |
 | M3 shell/native rules and CLI | done |
-| M4 embedded Python and JavaScript | planned |
+| M4 embedded Python and JavaScript | done |
 | M5 session ingestion and result association | planned |
 | M6 historical snapshot enrichment | planned |
 | M7 hardening and integration | planned |
@@ -36,8 +36,9 @@ go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 
 ```go
 e, err := toolparser.New(toolparser.Config{
-    Rules:  standard.Rules(),      // rules/standard
-    Native: nativestd.Bindings(),  // native/standard
+    Rules:     standard.Rules(),      // rules/standard
+    Native:    nativestd.Bindings(),  // native/standard
+    Languages: toolparser.Languages{Python: true, JavaScript: true},
 })
 analysis, err := e.AnalyzeShell(ctx, []byte("cat README.md"), model.ExecutionContext{
     WorkingDir: model.KnownFact("/workspace/project", "reported"),

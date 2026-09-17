@@ -60,7 +60,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 }
 
 func newEngine() (*toolparser.Engine, error) {
-	return toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings()})
+	return toolparser.New(toolparser.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: toolparser.Languages{Python: true, JavaScript: true}})
 }
 
 func openInput(name string, stdin io.Reader) (io.ReadCloser, error) {

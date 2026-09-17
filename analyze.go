@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/lastpersonlabs/toolparser/internal/analysis"
+	"github.com/lastpersonlabs/toolparser/internal/languages"
+	"github.com/lastpersonlabs/toolparser/internal/languages/treesitter"
 	"github.com/lastpersonlabs/toolparser/internal/shell"
 	"github.com/lastpersonlabs/toolparser/internal/source"
 	"github.com/lastpersonlabs/toolparser/model"
@@ -70,7 +72,11 @@ func New(cfg Config) (*Engine, error) {
 }
 
 func (e *Engine) versions() model.Versions {
-	return model.Versions{Analyzer: Version, Ruleset: e.rules.Fingerprint() + "/" + e.native.Fingerprint(), ShellParser: shell.ParserVersion}
+	v := model.Versions{Analyzer: Version, Ruleset: e.rules.Fingerprint() + "/" + e.native.Fingerprint(), ShellParser: shell.ParserVersion}
+	if e.cfg.Languages.Python || e.cfg.Languages.JavaScript {
+		v.LanguageRuntime = treesitter.Version
+	}
+	return v
 }
 
 // Analyze analyzes one invocation. It never executes the invocation or reads
@@ -125,6 +131,7 @@ func (e *Engine) builder(ctx context.Context, store *source.Store) *analysis.Bui
 	b := analysis.New(ctx, store, e.cfg.Limits)
 	b.Rules, b.Native = e.rules, e.native
 	b.Shell = shell.Analyze
+	b.Program = languages.Analyzer(languages.Enabled{Python: e.cfg.Languages.Python, JavaScript: e.cfg.Languages.JavaScript})
 	return b
 }
 

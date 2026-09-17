@@ -5,7 +5,7 @@ By default it prints no raw source: `-show-source` opts in.
 
 ```
 agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
-agentcmd records [-adapter canonical|openai|anthropic|gemini] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
+agentcmd records [-adapter canonical|openai|anthropic|gemini|claude-code|codex] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
 agentcmd version
 ```
 

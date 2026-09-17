@@ -32,9 +32,53 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
 }
 
-const usage = `usage:
-  agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-snapshot-root DIR [-snapshot-mount PATH] [-snapshot ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
-  agentcmd records [-adapter canonical|openai|anthropic|gemini] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
+const usage = `agentcmd analyzes shell commands and agent tool-call records without
+executing them, and reports the filesystem, network and process operations
+they would perform.
+
+usage:
+  agentcmd analyze [flags] [FILE|-]   analyze one shell command
+  agentcmd records [flags] [FILE|-]   analyze a stream of tool-call records from an agent harness
+  agentcmd version                    print the binary and schema version
+
+Run "agentcmd help <command>" or "agentcmd <command> -h" for a command's
+flags and what it does.
+`
+
+const analyzeHelp = `agentcmd analyze — analyze a single shell command
+
+Reads one shell program from FILE or stdin ("-"), parses it without running
+it, and reports every filesystem, network and process operation it would
+perform: what it touches, how confidently (evidence verb), and under what
+guards. Use -structure to also see the execution tree, and -format json for
+the machine-readable model.Analysis document.
+
+usage:
+  agentcmd analyze [flags] [FILE|-]
+
+flags:
+`
+
+const recordsHelp = `agentcmd records — analyze a stream of agent tool-call records
+
+Reads newline-delimited records — agentcmd's own canonical format, a
+provider transcript format (openai, anthropic, gemini), or a coding agent's
+own on-disk session log (claude-code, codex) — named by -adapter, and emits
+one event per completed tool call, tool result or problem found along the
+way. This is the entry point for auditing what an agent harness actually
+asked to run, as opposed to a single shell command. Provider records need
+-tool-namespace to bind their tool calls against known bindings (e.g.
+"harness"); without it, calls are reported opaquely.
+
+usage:
+  agentcmd records [flags] [FILE|-]
+
+flags:
+`
+
+const versionHelp = `agentcmd version — print the binary and schema version
+
+usage:
   agentcmd version
 `
 
@@ -53,8 +97,29 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "version":
 		fmt.Fprintf(stdout, "agentcmd %s schema %s\n", agentcmd.Version, model.SchemaVersion)
 		return 0
-	case "-h", "--help", "help":
+	case "-h", "--help":
 		fmt.Fprint(stdout, usage)
+		return 0
+	case "help":
+		return help(args[1:], stdout, stderr)
+	}
+	fmt.Fprintf(stderr, "unknown command %q\n%s", args[0], usage)
+	return 1
+}
+
+// help implements "agentcmd help" and "agentcmd help <command>".
+func help(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 {
+		fmt.Fprint(stdout, usage)
+		return 0
+	}
+	switch args[0] {
+	case "analyze":
+		return analyze([]string{"-h"}, nil, stdout, stdout)
+	case "records":
+		return records([]string{"-h"}, nil, stdout, stdout)
+	case "version":
+		fmt.Fprint(stdout, versionHelp)
 		return 0
 	}
 	fmt.Fprintf(stderr, "unknown command %q\n%s", args[0], usage)
@@ -75,6 +140,7 @@ func openInput(name string, stdin io.Reader) (io.ReadCloser, error) {
 func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("analyze", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	fs.Usage = func() { fmt.Fprint(fs.Output(), analyzeHelp); fs.PrintDefaults() }
 	cwd := fs.String("cwd", "", "reported working directory (unknown when empty)")
 	shell := fs.String("shell", "bash", "shell dialect: bash, sh, zsh, mksh")
 	ns := fs.String("namespace", "host", "execution namespace KIND[:ID]: host, container:ID, remote:ID, unknown")
@@ -85,6 +151,9 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	snapMount := fs.String("snapshot-mount", "", "path in the command's namespace that -snapshot-root corresponds to (default: -cwd)")
 	snapID := fs.String("snapshot", "", "snapshot identity the command ran against; content from -snapshot-root at another identity is labeled approximate")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 	if fs.NArg() > 1 {
@@ -153,6 +222,7 @@ func parseNamespace(s string) model.Namespace {
 func records(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("records", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	fs.Usage = func() { fmt.Fprint(fs.Output(), recordsHelp); fs.PrintDefaults() }
 	format := fs.String("format", "text", "output format: text or jsonl")
 	adapter := fs.String("adapter", "canonical", "record format: "+strings.Join(adapters.Names(), ", "))
 	toolNS := fs.String("tool-namespace", "", "harness namespace to bind provider tool calls against (e.g. harness)")
@@ -161,6 +231,9 @@ func records(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	structure := fs.Bool("structure", false, "print the execution tree")
 	showSource := fs.Bool("show-source", false, "include retained source text (may reveal secrets)")
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 	ad, err := adapters.ByName(*adapter)

@@ -12,11 +12,21 @@ meaning comes from `native` bindings selected by namespace.
 | `openai` | Responses API, 2025-03 | `function_call`, `custom_tool_call`, `function_call_output`, `custom_tool_call_output` items; whole response objects; streaming `response.output_item.added/done`, `response.function_call_arguments.delta/done`, `response.custom_tool_call_input.delta/done` |
 | `anthropic` | Messages API 2023-06-01 | `tool_use` and `tool_result` blocks, bare or inside a message; streaming `content_block_start/delta/stop` with `input_json_delta` |
 | `gemini` | v1beta 2025 | `functionCall` and `functionResponse` parts, bare, in `content.parts` or in `candidates[].content.parts` |
+| `claude-code` | CLI session log | Claude Code's own `~/.claude/projects/*/*.jsonl` transcript: `tool_use`/`tool_result` blocks nested under a line's `"message"`, decoded via `anthropic` once the CLI envelope (`type`, `uuid`, `sessionId`, `cwd`, …) is stripped |
+| `codex` | CLI session log | Codex CLI's own `~/.codex/sessions/**/rollout-*.jsonl` log: `function_call`/`custom_tool_call` items and their outputs nested under a `"response_item"` line's `"payload"`, decoded via `openai` once the envelope (`session_meta`, `event_msg`, `token_usage_record`, `turn_context`, …) is stripped |
 
 Records outside a schema are reported as `unsupported` diagnostics; malformed
 JSON as `invalid_record`. Nothing recognized disappears silently: a call with
 arguments that are not valid JSON keeps them as text input, which the binding
-then refuses explicitly.
+then refuses explicitly. `claude-code` and `codex` are the exception: their
+CLI-only bookkeeping lines (Claude Code's `mode`, `permission-mode`,
+`attachment`, `file-history-snapshot`; Codex's `session_meta`, `event_msg`,
+`token_usage_record`, `turn_context`) and plain conversation turns (text-only
+messages, `reasoning`) are expected and skipped rather than diagnosed, since
+most of a session's lines are not tool traffic. A payload or message that
+looks like it should carry a call but does not decode still reports
+`unsupported`, so an unimplemented item kind (Codex's `local_shell_call`, for
+example) is never silently dropped.
 
 Provider tool calls carry the provider as namespace (`openai`, `anthropic`,
 `gemini`). Bindings are registered per harness namespace, so the caller states

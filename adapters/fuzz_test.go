@@ -11,12 +11,16 @@ func FuzzDecode(f *testing.F) {
 		`{"candidates":[{"content":{"parts":[{"functionCall":{"name":"f","args":{}}}]}}]}`,
 		`{"id":"x","tool":{"name":"t"},"input":{"kind":"text","text":"ls"}}`,
 		`{"observation":{"kind":"exit_status","exit_code":1}}`,
+		`{"type":"assistant","sessionId":"s","message":{"role":"assistant","content":[{"type":"tool_use","id":"t","name":"Bash","input":{"command":"ls"}}]}}`,
+		`{"type":"attachment","attachment":{}}`,
+		`{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"c","name":"exec","input":"ls"}}`,
+		`{"type":"session_meta","payload":{"session_id":"s"}}`,
 		`[]`, `null`, `{"type":null}`, `{"content":"not an array"}`,
 	} {
 		f.Add(s)
 	}
 	f.Fuzz(func(t *testing.T, line string) {
-		for _, a := range []Adapter{Canonical{}, OpenAI{}, Anthropic{}, Gemini{}} {
+		for _, a := range []Adapter{Canonical{}, OpenAI{}, Anthropic{}, Gemini{}, ClaudeCode{}, Codex{}} {
 			recs, err := a.Decode([]byte(line))
 			if err != nil {
 				continue

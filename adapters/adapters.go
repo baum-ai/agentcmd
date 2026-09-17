@@ -99,12 +99,18 @@ func ByName(name string) (Adapter, error) {
 		return Anthropic{}, nil
 	case "gemini", "gemini.generate":
 		return Gemini{}, nil
+	case "claude-code", "claude-code.transcript":
+		return ClaudeCode{}, nil
+	case "codex", "codex.session":
+		return Codex{}, nil
 	}
 	return nil, fmt.Errorf("adapters: unknown adapter %q", name)
 }
 
 // Names lists the built-in adapters.
-func Names() []string { return []string{"canonical", "openai", "anthropic", "gemini"} }
+func Names() []string {
+	return []string{"canonical", "openai", "anthropic", "gemini", "claude-code", "codex"}
+}
 
 func str(m map[string]json.RawMessage, key string) string {
 	var s string

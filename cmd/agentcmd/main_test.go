@@ -123,3 +123,24 @@ func TestUsageAndVersion(t *testing.T) {
 		t.Fatal(out)
 	}
 }
+
+func TestHelp(t *testing.T) {
+	if code, out, _ := exec(t, "", "-h"); code != 0 || !strings.Contains(out, "agentcmd analyze") || !strings.Contains(out, "agentcmd records") {
+		t.Fatalf("%d %s", code, out)
+	}
+	if code, _, errOut := exec(t, "", "analyze", "-h"); code != 0 || !strings.Contains(errOut, "analyze a single shell command") || !strings.Contains(errOut, "-show-source") {
+		t.Fatalf("%d %s", code, errOut)
+	}
+	if code, _, errOut := exec(t, "", "records", "-h"); code != 0 || !strings.Contains(errOut, "stream of agent tool-call records") || !strings.Contains(errOut, "-tool-namespace") {
+		t.Fatalf("%d %s", code, errOut)
+	}
+	if code, out, _ := exec(t, "", "help", "analyze"); code != 0 || !strings.Contains(out, "analyze a single shell command") {
+		t.Fatalf("%d %s", code, out)
+	}
+	if code, out, _ := exec(t, "", "help", "version"); code != 0 || !strings.Contains(out, "agentcmd version —") {
+		t.Fatalf("%d %s", code, out)
+	}
+	if code, _, errOut := exec(t, "", "help", "bogus"); code != 1 || !strings.Contains(errOut, "unknown command") {
+		t.Fatalf("%d %s", code, errOut)
+	}
+}

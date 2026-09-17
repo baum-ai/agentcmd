@@ -134,3 +134,87 @@ func TestCanonical(t *testing.T) {
 		t.Fatal("unknown adapter must fail")
 	}
 }
+
+func TestClaudeCode(t *testing.T) {
+	a := ClaudeCode{}
+	recs := decode(t, a, `{"type":"assistant","sessionId":"s1","message":{"type":"message","role":"assistant","content":[{"type":"text","text":"ok"},{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"ls"}}]}}`)
+	if len(recs) != 1 || recs[0].Call == nil || recs[0].Call.CallID != "toolu_1" || recs[0].Call.Session != "s1" || recs[0].Call.Tool.Namespace != "anthropic" || recs[0].Call.Tool.Name != "Bash" {
+		t.Fatalf("%+v", recs)
+	}
+	recs = decode(t, a, `{"type":"user","sessionId":"s1","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"file list","is_error":false}]}}`)
+	if len(recs) != 1 || recs[0].Result == nil || recs[0].Result.CallID != "toolu_1" || recs[0].Result.Session != "s1" {
+		t.Fatalf("%+v", recs)
+	}
+	// A plain chat turn (string content, no blocks) has nothing to report.
+	recs = decode(t, a, `{"type":"user","sessionId":"s1","message":{"role":"user","content":"hello"}}`)
+	if recs != nil {
+		t.Fatalf("%+v", recs)
+	}
+	// An assistant turn with only text/thinking blocks has nothing to report.
+	recs = decode(t, a, `{"type":"assistant","sessionId":"s1","message":{"role":"assistant","content":[{"type":"thinking","thinking":"..."},{"type":"text","text":"done"}]}}`)
+	if recs != nil {
+		t.Fatalf("%+v", recs)
+	}
+	// CLI bookkeeping lines carry no message and are skipped, not flagged.
+	for _, line := range []string{
+		`{"type":"mode","mode":"normal","sessionId":"s1"}`,
+		`{"type":"attachment","attachment":{"type":"hook_success"},"sessionId":"s1"}`,
+		`{"type":"file-history-snapshot","messageId":"m"}`,
+	} {
+		if recs := decode(t, a, line); recs != nil {
+			t.Fatalf("%s: %+v", line, recs)
+		}
+	}
+	if _, err := a.Decode([]byte(`not json`)); err == nil {
+		t.Fatal("malformed input must be a hard error")
+	}
+	if _, err := a.Decode([]byte(`{"message":"not an object"}`)); !errors.Is(err, ErrUnrecognized) {
+		t.Fatal(err)
+	}
+}
+
+func TestCodex(t *testing.T) {
+	a := Codex{}
+	recs := decode(t, a, `{"type":"response_item","payload":{"type":"custom_tool_call","call_id":"call_1","name":"exec","input":"ls"}}`)
+	if len(recs) != 1 || recs[0].Call == nil || recs[0].Call.CallID != "call_1" || recs[0].Call.Tool.Namespace != "openai" || recs[0].Call.Tool.Name != "exec" || recs[0].Call.Input.Kind != model.InputText || recs[0].Call.Input.Text != "ls" {
+		t.Fatalf("%+v", recs)
+	}
+	recs = decode(t, a, `{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call_1","output":"ok"}}`)
+	if len(recs) != 1 || recs[0].Result == nil || recs[0].Result.CallID != "call_1" || recs[0].Result.Observation.Detail != "ok" {
+		t.Fatalf("%+v", recs)
+	}
+	recs = decode(t, a, `{"type":"response_item","payload":{"type":"function_call","call_id":"call_2","name":"shell","arguments":"{\"command\":[\"ls\"]}"}}`)
+	if len(recs) != 1 || recs[0].Call.Tool.Name != "shell" || recs[0].Call.Input.Kind != model.InputJSON {
+		t.Fatalf("%+v", recs)
+	}
+	// Plain conversation turns have nothing to report.
+	for _, line := range []string{
+		`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hi"}]}}`,
+		`{"type":"response_item","payload":{"type":"reasoning","summary":[]}}`,
+	} {
+		if recs := decode(t, a, line); recs != nil {
+			t.Fatalf("%s: %+v", line, recs)
+		}
+	}
+	// Session bookkeeping lines carry no payload to interpret and are skipped.
+	for _, line := range []string{
+		`{"type":"session_meta","payload":{"session_id":"s1"}}`,
+		`{"type":"event_msg","payload":{"type":"task_started"}}`,
+		`{"type":"token_usage_record","payload":{}}`,
+		`{"type":"turn_context","payload":{}}`,
+	} {
+		if recs := decode(t, a, line); recs != nil {
+			t.Fatalf("%s: %+v", line, recs)
+		}
+	}
+	// A response_item payload of a kind we do not decode is reported, not dropped.
+	if _, err := a.Decode([]byte(`{"type":"response_item","payload":{"type":"local_shell_call","call_id":"call_3"}}`)); !errors.Is(err, ErrUnrecognized) {
+		t.Fatal(err)
+	}
+	if _, err := a.Decode([]byte(`not json`)); err == nil {
+		t.Fatal("malformed input must be a hard error")
+	}
+	if _, err := a.Decode([]byte(`{"type":"response_item"}`)); !errors.Is(err, ErrUnrecognized) {
+		t.Fatal(err)
+	}
+}

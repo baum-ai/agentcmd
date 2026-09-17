@@ -5,7 +5,7 @@ By default it prints no raw source: `-show-source` opts in.
 
 ```
 agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
-agentcmd records [-format text|jsonl] [-structure] [-show-source] [FILE|-]
+agentcmd records [-adapter canonical|openai|anthropic|gemini] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
 agentcmd version
 ```
 
@@ -28,12 +28,14 @@ or I/O error.
 
 ## records
 
-Reads newline-delimited canonical `model.Invocation` JSON records and emits
-one result per record. Text output prints `record N:` blocks; `-format jsonl`
-emits `{"line":N,"invocation":ID,"analysis":{...}}` or
-`{"line":N,"error":"..."}`. Records over the input frame limit (8 MiB) are
-skipped with an error line without being buffered. Exit status is `2` when
-any record failed or was partial.
+Reads newline-delimited records in the format named by `-adapter` (see
+`docs/ingestion.md`) and emits one `model.Event` per completed call, result
+or problem. Provider records need `-tool-namespace harness` to bind against
+the standard harness bindings; without it calls stay opaque. `-cwd` and
+`-shell` supply the execution context for records that carry none. Text
+output prints `record N:` blocks; `-format jsonl` emits the events. Records
+over the frame limit (8 MiB) are skipped without being buffered. Exit status
+is `2` when any event was a diagnostic, orphan or partial analysis.
 
 ## Reading the text output
 

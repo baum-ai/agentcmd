@@ -72,19 +72,27 @@ func TestRecordsStream(t *testing.T) {
 	json.Unmarshal([]byte(outLines[0]), &first)
 	json.Unmarshal([]byte(outLines[1]), &second)
 	json.Unmarshal([]byte(outLines[2]), &third)
-	if first["invocation"] != "c1" || first["analysis"] == nil || second["error"] == nil || third["invocation"] != "c2" {
+	if first["kind"] != "analysis" || first["analysis"] == nil || second["kind"] != "diagnostic" || third["kind"] != "analysis" || !strings.Contains(third["invocation"].(string), "c2") {
 		t.Fatalf("%s", out)
 	}
 	code, out, _ = exec(t, lines[0]+"\n", "records", "-")
 	if code != 0 || !strings.Contains(out, "record 1:") || !strings.Contains(out, "filesystem.list") {
 		t.Fatalf("%d %s", code, out)
 	}
+	openai := `{"type":"function_call","call_id":"c","name":"Bash","arguments":"{\"command\":\"ls\"}"}` + "\n" + `{"type":"function_call_output","call_id":"c","output":"ok"}` + "\n"
+	code, out, _ = exec(t, openai, "records", "-adapter", "openai", "-tool-namespace", "harness", "-format", "jsonl", "-cwd", "/w", "-")
+	if code != 0 || strings.Count(out, "\n") != 2 || !strings.Contains(out, `"kind":"observation"`) || !strings.Contains(out, "filesystem.list") {
+		t.Fatalf("%d %s", code, out)
+	}
+	if code, _, errOut := exec(t, "", "records", "-adapter", "nope", "-"); code != 1 || !strings.Contains(errOut, "unknown adapter") {
+		t.Fatal(errOut)
+	}
 }
 
 func TestOversizedRecordIsSkippedNotBuffered(t *testing.T) {
 	big := strings.Repeat("x", 9<<20)
 	code, out, _ := exec(t, big+"\n"+`{"id":"ok","tool":{"name":"bash","namespace":"harness"},"input":{"kind":"text","text":"ls"},"context":{"working_dir":{"known":false},"shell":{"known":false},"namespace":{"kind":"host"}}}`+"\n", "records", "-format", "jsonl", "-")
-	if code != 2 || !strings.Contains(out, "exceeds") || !strings.Contains(out, `"invocation":"ok"`) {
+	if code != 2 || !strings.Contains(out, "exceeds") || !strings.Contains(out, `ok#2`) {
 		t.Fatalf("%d %s", code, out[:min(len(out), 300)])
 	}
 }

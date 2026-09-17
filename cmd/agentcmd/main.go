@@ -4,12 +4,11 @@
 // not print raw source.
 //
 //	agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
-//	agentcmd records [-format text|jsonl] [-structure] [-show-source] [FILE|-]
+//	agentcmd records [-adapter NAME] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
 //	agentcmd version
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,10 +19,12 @@ import (
 	"strings"
 
 	toolparser "github.com/lastpersonlabs/toolparser"
+	"github.com/lastpersonlabs/toolparser/adapters"
 	"github.com/lastpersonlabs/toolparser/model"
 	nstd "github.com/lastpersonlabs/toolparser/native/standard"
 	"github.com/lastpersonlabs/toolparser/render"
 	rstd "github.com/lastpersonlabs/toolparser/rules/standard"
+	"github.com/lastpersonlabs/toolparser/stream"
 )
 
 func main() {
@@ -32,7 +33,7 @@ func main() {
 
 const usage = `usage:
   agentcmd analyze [-cwd DIR] [-shell DIALECT] [-namespace KIND[:ID]] [-format text|json] [-structure] [-show-source] [FILE|-]
-  agentcmd records [-format text|jsonl] [-structure] [-show-source] [FILE|-]
+  agentcmd records [-adapter canonical|openai|anthropic|gemini] [-tool-namespace NS] [-format text|jsonl] [-cwd DIR] [-shell DIALECT] [-structure] [-show-source] [FILE|-]
   agentcmd version
 `
 
@@ -133,21 +134,22 @@ func parseNamespace(s string) model.Namespace {
 	return model.Namespace{Kind: model.NamespaceKind(kind), ID: id}
 }
 
-// recordResult is one output line in records mode.
-type recordResult struct {
-	Line       int             `json:"line"`
-	Invocation string          `json:"invocation,omitempty"`
-	Analysis   *model.Analysis `json:"analysis,omitempty"`
-	Error      string          `json:"error,omitempty"`
-}
-
 func records(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("records", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	format := fs.String("format", "text", "output format: text or jsonl")
+	adapter := fs.String("adapter", "canonical", "record format: "+strings.Join(adapters.Names(), ", "))
+	toolNS := fs.String("tool-namespace", "", "harness namespace to bind provider tool calls against (e.g. harness)")
+	cwd := fs.String("cwd", "", "default working directory for records without context")
+	shell := fs.String("shell", "", "default shell dialect for records without context")
 	structure := fs.Bool("structure", false, "print the execution tree")
 	showSource := fs.Bool("show-source", false, "include retained source text (may reveal secrets)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	ad, err := adapters.ByName(*adapter)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
 		return 1
 	}
 	in, err := openInput(fs.Arg(0), stdin)
@@ -161,83 +163,64 @@ func records(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
-	limit := toolparser.DefaultLimits().InputFrameBytes
-	r := bufio.NewReaderSize(in, 64<<10)
-	enc := json.NewEncoder(stdout)
+	defaults := model.ExecutionContext{Namespace: model.Namespace{Kind: model.NamespaceHost}}
+	if *cwd != "" {
+		defaults.WorkingDir = model.KnownFact(*cwd, "configured")
+	}
+	if *shell != "" {
+		defaults.Shell = model.KnownFact(*shell, "configured")
+	}
+	p, err := stream.New(e, stream.Options{Adapter: ad, Context: defaults, ToolNamespace: *toolNS})
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	status := 0
-	for line := 1; ; line++ {
-		data, tooLong, err := readLine(r, limit)
-		if err == io.EOF && len(data) == 0 {
-			break
-		}
-		if err != nil && err != io.EOF {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		res := recordResult{Line: line}
-		switch {
-		case tooLong:
-			res.Error = fmt.Sprintf("record exceeds %d bytes and was skipped", limit)
-		case len(strings.TrimSpace(string(data))) == 0:
-			continue
-		default:
-			var inv model.Invocation
-			if uerr := json.Unmarshal(data, &inv); uerr != nil {
-				res.Error = "invalid record: " + uerr.Error()
-				break
-			}
-			res.Invocation = inv.ID
-			a, aerr := e.Analyze(context.Background(), inv)
-			if aerr != nil && !errors.Is(aerr, toolparser.ErrPartial) {
-				res.Error = aerr.Error()
-				break
-			}
-			res.Analysis = &a
-		}
-		if res.Error != "" || (res.Analysis != nil && res.Analysis.Partial) {
+	enc := json.NewEncoder(stdout)
+	err = p.Process(context.Background(), in, func(ev model.Event) error {
+		if ev.Kind != model.EventAnalysis && ev.Kind != model.EventObservation || (ev.Analysis != nil && ev.Analysis.Partial) {
 			status = 2
 		}
 		if *format == "jsonl" || *format == "json" {
-			if err := enc.Encode(res); err != nil {
-				fmt.Fprintln(stderr, err)
-				return 1
-			}
-			continue
+			return enc.Encode(ev)
 		}
-		if res.Error != "" {
-			fmt.Fprintf(stdout, "record %d: %s\n\n", line, res.Error)
-			continue
-		}
-		fmt.Fprintf(stdout, "record %d:\n", line)
-		if err := render.Text(stdout, res.Analysis, render.TextOptions{ShowSource: *showSource, Structure: *structure}); err != nil {
-			fmt.Fprintln(stderr, err)
-			return 1
-		}
-		fmt.Fprintln(stdout)
+		return renderEvent(stdout, ev, render.TextOptions{ShowSource: *showSource, Structure: *structure})
+	})
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
 	return status
 }
 
-// readLine reads one line, discarding the remainder of lines longer than max
-// without buffering them in full.
-func readLine(r *bufio.Reader, max int) ([]byte, bool, error) {
-	var line []byte
-	tooLong := false
-	for {
-		chunk, isPrefix, err := r.ReadLine()
-		if err != nil {
-			return line, tooLong, err
+func renderEvent(w io.Writer, ev model.Event, opts render.TextOptions) error {
+	switch ev.Kind {
+	case model.EventAnalysis:
+		fmt.Fprintf(w, "record %d: %s\n", ev.Sequence, ev.Invocation)
+		if err := render.Text(w, ev.Analysis, opts); err != nil {
+			return err
 		}
-		if !tooLong {
-			if len(line)+len(chunk) > max {
-				tooLong = true
-				line = nil
-			} else {
-				line = append(line, chunk...)
+		_, err := fmt.Fprintln(w)
+		return err
+	case model.EventObservation:
+		detail := ""
+		if ev.Observation != nil {
+			detail = string(ev.Observation.Kind) + " " + ev.Observation.Detail
+			if ev.Observation.ExitCode != nil {
+				detail += fmt.Sprintf(" exit=%d", *ev.Observation.ExitCode)
 			}
 		}
-		if !isPrefix {
-			return line, tooLong, nil
+		for _, l := range ev.Lifecycle {
+			detail += " " + string(l.Phase)
 		}
+		_, err := fmt.Fprintf(w, "record %d: observation for %s:%s\n\n", ev.Sequence, ev.Invocation, detail)
+		return err
+	default:
+		msg := ""
+		if ev.Diagnostic != nil {
+			msg = ev.Diagnostic.Code + ": " + ev.Diagnostic.Message
+		}
+		_, err := fmt.Fprintf(w, "record %d: %s %s\n\n", ev.Sequence, ev.Kind, msg)
+		return err
 	}
 }

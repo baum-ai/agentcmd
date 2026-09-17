@@ -21,7 +21,7 @@ environment, and builds with `CGO_ENABLED=0`.
 | M2 shell structure, state, guarded actions | done |
 | M3 shell/native rules and CLI | done |
 | M4 embedded Python and JavaScript | done |
-| M5 session ingestion and result association | planned |
+| M5 session ingestion and result association | done |
 | M6 historical snapshot enrichment | planned |
 | M7 hardening and integration | planned |
 
@@ -62,4 +62,8 @@ PY
 EOF2
 ```
 
-See `docs/cli.md`.
+See `docs/cli.md` and `docs/ingestion.md` for record streams:
+
+```sh
+agentcmd records -adapter openai -tool-namespace harness -format jsonl session.jsonl
+```

@@ -18,7 +18,7 @@ environment, and builds with `CGO_ENABLED=0`.
 |---|---|
 | M0 evidence, model decisions, dependency qualification | done |
 | M1 canonical model and library skeleton | done |
-| M2 shell structure, state, guarded actions | planned |
+| M2 shell structure, state, guarded actions | done |
 | M3 shell/native rules and CLI | planned |
 | M4 embedded Python and JavaScript | planned |
 | M5 session ingestion and result association | planned |

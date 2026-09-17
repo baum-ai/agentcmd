@@ -184,9 +184,10 @@ func Symbolic(text string) Value { return Value{Knowledge: KnowledgeSymbolic, Te
 // Unknown is a value about which nothing is known.
 func Unknown() Value { return Value{Knowledge: KnowledgeUnknown} }
 
-// Concrete reports whether Text is the actual value (literal or derived).
+// Concrete reports whether Text is the actual value (literal or derived with
+// a single possibility).
 func (v Value) Concrete() bool {
-	return v.Knowledge == KnowledgeLiteral || v.Knowledge == KnowledgeDerived
+	return (v.Knowledge == KnowledgeLiteral || v.Knowledge == KnowledgeDerived) && len(v.Alternatives) == 0
 }
 
 // Resource is a path, URL or other operand as an expression in a namespace.
@@ -199,11 +200,14 @@ type Resource struct {
 	ExpressionBytes []byte `json:"expression_bytes,omitempty"`
 	// Resolved is the lexical resolution against the abstract working
 	// directory. It is not a symlink-canonical identity.
-	Resolved  string      `json:"resolved,omitempty"`
-	Knowledge Knowledge   `json:"knowledge"`
-	Namespace Namespace   `json:"namespace"`
-	Snapshot  string      `json:"snapshot,omitempty"`
-	Span      *SourceSpan `json:"span,omitempty"`
+	Resolved string `json:"resolved,omitempty"`
+	// Alternatives lists the bounded set of possible resolved values when
+	// the expression joins several branches.
+	Alternatives []string    `json:"alternatives,omitempty"`
+	Knowledge    Knowledge   `json:"knowledge"`
+	Namespace    Namespace   `json:"namespace"`
+	Snapshot     string      `json:"snapshot,omitempty"`
+	Span         *SourceSpan `json:"span,omitempty"`
 }
 
 // Basis is the evidence class of a statement. See ADR 0001.

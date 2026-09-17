@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"path"
 	"sort"
-	"strings"
 
 	"github.com/lastpersonlabs/toolparser/model"
 )
@@ -136,36 +135,81 @@ func (r *Registry) Fingerprint() string {
 }
 
 // Resource builds a resource for an operand, lexically resolved against the
-// command's working directory. Glob metacharacters downgrade knowledge to
-// glob; symbolic or unknown values are never resolved.
+// command's working directory. Symbolic or unknown values are never
+// resolved; bounded alternatives of the operand or the directory are listed.
 func (c Command) Resource(v model.Value, role string) model.Resource {
 	res := model.Resource{Role: role, Expression: v.Text, Knowledge: v.Knowledge, Namespace: c.Namespace, Span: v.Span}
-	if v.Knowledge == model.KnowledgeUnknown || v.Knowledge == model.KnowledgeUnset {
+	switch v.Knowledge {
+	case model.KnowledgeUnknown, model.KnowledgeUnset:
 		res.Expression = ""
 		return res
+	case model.KnowledgeSymbolic, model.KnowledgeRedacted:
+		return res
 	}
-	if v.Concrete() && strings.ContainsAny(v.Text, "*?[") {
-		res.Knowledge = model.KnowledgeGlob
+	// literal, derived or glob: resolve each alternative of operand × cwd.
+	ops := v.Alternatives
+	if len(ops) == 0 {
+		ops = []string{v.Text}
 	}
-	if v.Concrete() || res.Knowledge == model.KnowledgeGlob {
-		res.Resolved = Resolve(c.Cwd, v.Text)
+	dirs := c.Cwd.Alternatives
+	if len(dirs) == 0 {
+		dirs = []string{c.Cwd.Text}
+	}
+	var out []string
+	for _, op := range ops {
+		for _, dir := range dirs {
+			r := resolve(c.Cwd.Knowledge, dir, op)
+			if r != "" && !contains(out, r) {
+				out = append(out, r)
+			}
+		}
+	}
+	switch {
+	case len(out) == 1 && len(ops) == 1:
+		res.Resolved = out[0]
+	case len(out) > 1:
+		res.Alternatives = out
+		if res.Knowledge == model.KnowledgeLiteral {
+			res.Knowledge = model.KnowledgeDerived
+		}
 	}
 	return res
+}
+
+func contains(xs []string, x string) bool {
+	for _, y := range xs {
+		if y == x {
+			return true
+		}
+	}
+	return false
 }
 
 // Resolve joins a path with an abstract working directory lexically. It
 // returns "" when the directory is not concrete and the path is relative.
 func Resolve(cwd model.Value, p string) string {
+	if !cwd.Concrete() {
+		return resolve(model.KnowledgeUnknown, "", p)
+	}
+	return resolve(cwd.Knowledge, cwd.Text, p)
+}
+
+func resolve(cwdKnowledge model.Knowledge, cwd, p string) string {
 	if p == "" {
 		return ""
 	}
 	if path.IsAbs(p) {
 		return path.Clean(p)
 	}
-	if !cwd.Concrete() || cwd.Text == "" {
+	switch cwdKnowledge {
+	case model.KnowledgeLiteral, model.KnowledgeDerived:
+	default:
 		return ""
 	}
-	return path.Join(cwd.Text, p)
+	if cwd == "" {
+		return ""
+	}
+	return path.Join(cwd, p)
 }
 
 // NewAction builds an action with static evidence; the engine fills ID, node

@@ -1,0 +1,72 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_ba4298b3cdea052985955f6a",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "partial": true,
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 6
+      },
+      "reachability": "always",
+      "syntax": "invalid",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 6,
+      "text": "echo )"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "syntax_error",
+      "severity": "error",
+      "message": "offset 5: a command can only contain words and redirects; encountered `)`",
+      "node": "n2",
+      "span": {
+        "source": "s0",
+        "start": 5,
+        "end": 6
+      }
+    }
+  ]
+}

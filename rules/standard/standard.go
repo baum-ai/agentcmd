@@ -15,7 +15,7 @@ const Version = "0.1.0"
 
 // Rules returns every built-in rule.
 func Rules() []rules.Rule {
-	return []rules.Rule{catRule, headTailRule, lsRule}
+	return []rules.Rule{catRule, headTailRule, lsRule, shellRule, pythonRule, nodeRule, otherInterpreters}
 }
 
 // readOperands emits one filesystem.read per file operand; "-" is stdin.

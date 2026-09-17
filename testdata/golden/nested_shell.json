@@ -1,0 +1,459 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_d223524df45f64a35e44abe6",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 29
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "and",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 29
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "\u0026\u0026",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 23
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "bash",
+          "span": {
+            "source": "s0",
+            "start": 0,
+            "end": 4
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-c",
+            "span": {
+              "source": "s0",
+              "start": 5,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "cd /tmp \u0026\u0026 ls",
+            "span": {
+              "source": "s0",
+              "start": 9,
+              "end": 22
+            }
+          }
+        ],
+        "assumptions": [
+          "\"bash\" denotes the standard executable"
+        ],
+        "rule": "std/shell-launcher@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n4",
+      "kind": "program",
+      "span": {
+        "source": "s0",
+        "start": 9,
+        "end": 22
+      },
+      "reachability": "always",
+      "program": {
+        "language": "shell",
+        "interpreter": "bash",
+        "mode": "inline",
+        "source": "s1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n5",
+      "kind": "shell",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 13
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "parent": "n6",
+      "kind": "and",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 13
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "\u0026\u0026",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "parent": "n7",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 7
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "cd",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cd",
+          "span": {
+            "source": "s1",
+            "start": 0,
+            "end": 2
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "/tmp",
+            "span": {
+              "source": "s1",
+              "start": 3,
+              "end": 7
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/tmp",
+          "assumptions": [
+            "directory change to /tmp succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n9",
+      "parent": "n7",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 11,
+        "end": 13
+      },
+      "guard": {
+        "node": "n8",
+        "on": "success"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "ls",
+          "span": {
+            "source": "s1",
+            "start": 11,
+            "end": 13
+          }
+        },
+        "assumptions": [
+          "\"ls\" denotes the standard executable"
+        ],
+        "rule": "std/ls@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/tmp",
+          "assumptions": [
+            "directory change to /tmp succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n10",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 27,
+        "end": 29
+      },
+      "guard": {
+        "node": "n4",
+        "on": "success"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "ls",
+          "span": {
+            "source": "s0",
+            "start": 27,
+            "end": 29
+          }
+        },
+        "assumptions": [
+          "\"ls\" denotes the standard executable"
+        ],
+        "rule": "std/ls@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n5",
+      "kind": "process.shell",
+      "evidence": {
+        "basis": "syntax",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 0,
+            "end": 23
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "bash",
+          "span": {
+            "source": "s0",
+            "start": 0,
+            "end": 4
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-c",
+            "span": {
+              "source": "s0",
+              "start": 5,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "cd /tmp \u0026\u0026 ls",
+            "span": {
+              "source": "s0",
+              "start": 9,
+              "end": 22
+            }
+          }
+        ],
+        "shell": true
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n9",
+      "kind": "filesystem.list",
+      "resources": [
+        {
+          "role": "scope",
+          "expression": ".",
+          "resolved": "/tmp",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/ls",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 11,
+            "end": 13
+          }
+        ]
+      }
+    },
+    {
+      "id": "a3",
+      "node": "n10",
+      "kind": "filesystem.list",
+      "resources": [
+        {
+          "role": "scope",
+          "expression": ".",
+          "resolved": "/w",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/ls",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 27,
+            "end": 29
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 29,
+      "text": "bash -c 'cd /tmp \u0026\u0026 ls' \u0026\u0026 ls"
+    },
+    {
+      "id": "s1",
+      "kind": "shell",
+      "length": 13,
+      "text": "cd /tmp \u0026\u0026 ls",
+      "derived": {
+        "from": "s0",
+        "exact": true,
+        "segments": [
+          {
+            "start": 0,
+            "end": 13,
+            "from_start": 9,
+            "from_end": 22
+          }
+        ]
+      }
+    }
+  ]
+}

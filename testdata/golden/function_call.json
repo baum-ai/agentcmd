@@ -1,0 +1,230 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_f7f423395310281a44fd8358",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 32
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "function",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 20
+      },
+      "reachability": "latent",
+      "syntax": "parsed",
+      "detail": "show",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n2",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 21,
+        "end": 31
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "function call",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "show",
+          "span": {
+            "source": "s0",
+            "start": 21,
+            "end": 25
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "a.txt",
+            "span": {
+              "source": "s0",
+              "start": 26,
+              "end": 31
+            }
+          }
+        ],
+        "assumptions": [
+          "invokes the function defined at n3"
+        ],
+        "rule": "function"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n4",
+      "kind": "group",
+      "span": {
+        "source": "s0",
+        "start": 7,
+        "end": 20
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n5",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 9,
+        "end": 18
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cat",
+          "span": {
+            "source": "s0",
+            "start": 9,
+            "end": 12
+          }
+        },
+        "args": [
+          {
+            "knowledge": "derived",
+            "text": "a.txt",
+            "span": {
+              "source": "s0",
+              "start": 14,
+              "end": 16
+            }
+          }
+        ],
+        "assumptions": [
+          "\"cat\" denotes the standard executable"
+        ],
+        "rule": "std/cat@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n6",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "a.txt",
+          "resolved": "/w/a.txt",
+          "knowledge": "derived",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 14,
+            "end": 16
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/cat",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 9,
+            "end": 18
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 32,
+      "text": "show() { cat \"$1\"; }\nshow a.txt\n"
+    }
+  ]
+}

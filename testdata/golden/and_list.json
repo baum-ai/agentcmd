@@ -1,0 +1,216 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_50505812a251e66a2d356e45",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 29
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "and",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 29
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "\u0026\u0026",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 10
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "cd",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cd",
+          "span": {
+            "source": "s0",
+            "start": 0,
+            "end": 2
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "service",
+            "span": {
+              "source": "s0",
+              "start": 3,
+              "end": 10
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/w/service",
+          "assumptions": [
+            "directory change to service succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 14,
+        "end": 29
+      },
+      "guard": {
+        "node": "n4",
+        "on": "success"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cat",
+          "span": {
+            "source": "s0",
+            "start": 14,
+            "end": 17
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "config.json",
+            "span": {
+              "source": "s0",
+              "start": 18,
+              "end": 29
+            }
+          }
+        ],
+        "assumptions": [
+          "\"cat\" denotes the standard executable"
+        ],
+        "rule": "std/cat@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/w/service",
+          "assumptions": [
+            "directory change to service succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n5",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "config.json",
+          "resolved": "/w/service/config.json",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 18,
+            "end": 29
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/cat",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 14,
+            "end": 29
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 29,
+      "text": "cd service \u0026\u0026 cat config.json"
+    }
+  ]
+}

@@ -1,0 +1,360 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_20e34f7a09eee282f92a0027",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 47
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "if",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 41
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "if",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 3,
+        "end": 15
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "builtin without external effects",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "[",
+          "span": {
+            "source": "s0",
+            "start": 3,
+            "end": 4
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-f",
+            "span": {
+              "source": "s0",
+              "start": 5,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": ".env",
+            "span": {
+              "source": "s0",
+              "start": 8,
+              "end": 12
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "]",
+            "span": {
+              "source": "s0",
+              "start": 13,
+              "end": 14
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 21,
+        "end": 26
+      },
+      "guard": {
+        "node": "n4",
+        "on": "success"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "detail": "cd",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cd",
+          "span": {
+            "source": "s0",
+            "start": 21,
+            "end": 23
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "a",
+            "span": {
+              "source": "s0",
+              "start": 24,
+              "end": 25
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/w/a",
+          "assumptions": [
+            "directory change to a succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n3",
+      "kind": "if",
+      "span": {
+        "source": "s0",
+        "start": 27,
+        "end": 40
+      },
+      "guard": {
+        "node": "n4",
+        "on": "failure"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "detail": "else",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "parent": "n6",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 32,
+        "end": 37
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "detail": "cd",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cd",
+          "span": {
+            "source": "s0",
+            "start": 32,
+            "end": 34
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "b",
+            "span": {
+              "source": "s0",
+              "start": 35,
+              "end": 36
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/w/b",
+          "assumptions": [
+            "directory change to b succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "parent": "n2",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 42,
+        "end": 47
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cat",
+          "span": {
+            "source": "s0",
+            "start": 42,
+            "end": 45
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "f",
+            "span": {
+              "source": "s0",
+              "start": 46,
+              "end": 47
+            }
+          }
+        ],
+        "assumptions": [
+          "\"cat\" denotes the standard executable"
+        ],
+        "rule": "std/cat@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "{/w/a|/w/b}",
+          "assumptions": [
+            "one of the listed branch values"
+          ],
+          "alternatives": [
+            "/w/a",
+            "/w/b"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n8",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "f",
+          "alternatives": [
+            "/w/a/f",
+            "/w/b/f"
+          ],
+          "knowledge": "derived",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 46,
+            "end": 47
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/cat",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 42,
+            "end": 47
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 47,
+      "text": "if [ -f .env ]; then cd a; else cd b; fi; cat f"
+    }
+  ]
+}

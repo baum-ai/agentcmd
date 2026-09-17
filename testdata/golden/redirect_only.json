@@ -1,0 +1,144 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_872f314a3daa3896a0d006da",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 11
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 11
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "redirection only",
+      "command": {
+        "executable": {
+          "knowledge": "unset"
+        }
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "redirect",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 11
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "fd 1 \u003e",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n4",
+      "kind": "filesystem.write",
+      "resources": [
+        {
+          "role": "output",
+          "expression": "empty.log",
+          "resolved": "/w/empty.log",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 2,
+            "end": 11
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "shell/redirect",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 0,
+            "end": 11
+          }
+        ]
+      },
+      "write": {
+        "mode": "truncate"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 11,
+      "text": "\u003e empty.log"
+    }
+  ]
+}

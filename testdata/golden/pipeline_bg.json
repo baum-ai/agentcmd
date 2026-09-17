@@ -1,0 +1,390 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_84c615fae5036103f7526445",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 36
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "background",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 36
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "pipeline",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 36
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "|",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n4",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 15
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cat",
+          "span": {
+            "source": "s0",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "file1",
+            "span": {
+              "source": "s0",
+              "start": 4,
+              "end": 9
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "file2",
+            "span": {
+              "source": "s0",
+              "start": 10,
+              "end": 15
+            }
+          }
+        ],
+        "assumptions": [
+          "\"cat\" denotes the standard executable"
+        ],
+        "rule": "std/cat@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n4",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 18,
+        "end": 26
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "grep",
+          "span": {
+            "source": "s0",
+            "start": 18,
+            "end": 22
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "foo",
+            "span": {
+              "source": "s0",
+              "start": 23,
+              "end": 26
+            }
+          }
+        ]
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "parent": "n4",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 29,
+        "end": 34
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "wc",
+          "span": {
+            "source": "s0",
+            "start": 29,
+            "end": 31
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-l",
+            "span": {
+              "source": "s0",
+              "start": 32,
+              "end": 34
+            }
+          }
+        ]
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n5",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "file1",
+          "resolved": "/w/file1",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 4,
+            "end": 9
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/cat",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 0,
+            "end": 15
+          }
+        ]
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n5",
+      "kind": "filesystem.read",
+      "resources": [
+        {
+          "role": "target",
+          "expression": "file2",
+          "resolved": "/w/file2",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s0",
+            "start": 10,
+            "end": 15
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/cat",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s0",
+            "start": 0,
+            "end": 15
+          }
+        ]
+      }
+    },
+    {
+      "id": "a3",
+      "node": "n6",
+      "kind": "process.execute",
+      "evidence": {
+        "basis": "syntax",
+        "assumptions": [
+          "no rule for \"grep\"; effects unknown"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 18,
+            "end": 26
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "grep",
+          "span": {
+            "source": "s0",
+            "start": 18,
+            "end": 22
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "foo",
+            "span": {
+              "source": "s0",
+              "start": 23,
+              "end": 26
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "a4",
+      "node": "n7",
+      "kind": "process.execute",
+      "evidence": {
+        "basis": "syntax",
+        "assumptions": [
+          "no rule for \"wc\"; effects unknown"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 29,
+            "end": 34
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "wc",
+          "span": {
+            "source": "s0",
+            "start": 29,
+            "end": 31
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-l",
+            "span": {
+              "source": "s0",
+              "start": 32,
+              "end": 34
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 36,
+      "text": "cat file1 file2 | grep foo | wc -l \u0026"
+    }
+  ]
+}

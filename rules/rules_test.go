@@ -69,7 +69,14 @@ func TestRegistryAndResources(t *testing.T) {
 	if r := cmd.Resource(model.Literal("a/../b"), "target"); r.Resolved != "/w/b" || r.Knowledge != model.KnowledgeLiteral {
 		t.Fatalf("%+v", r)
 	}
-	if r := cmd.Resource(model.Literal("*.go"), "scope"); r.Knowledge != model.KnowledgeGlob || r.Resolved != "/w/*.go" {
+	if r := cmd.Resource(model.Value{Knowledge: model.KnowledgeGlob, Text: "*.go"}, "scope"); r.Knowledge != model.KnowledgeGlob || r.Resolved != "/w/*.go" {
+		t.Fatalf("%+v", r)
+	}
+	if r := cmd.Resource(model.Literal("*.go"), "scope"); r.Knowledge != model.KnowledgeLiteral {
+		t.Fatal("without a shell, metacharacters are literal")
+	}
+	alt := Command{Cwd: model.Value{Knowledge: model.KnowledgeDerived, Text: "{/a|/b}", Alternatives: []string{"/a", "/b"}}}
+	if r := alt.Resource(model.Literal("x"), "target"); r.Resolved != "" || len(r.Alternatives) != 2 || r.Alternatives[1] != "/b/x" || r.Knowledge != model.KnowledgeDerived {
 		t.Fatalf("%+v", r)
 	}
 	if r := cmd.Resource(model.Symbolic("$HOME/x"), "target"); r.Resolved != "" || r.Expression != "$HOME/x" {

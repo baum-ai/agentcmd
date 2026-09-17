@@ -34,9 +34,11 @@ type Context struct {
 	Cwd       model.Value
 	Namespace model.Namespace
 	Env       map[string]model.Value
-	Dialect   string
-	Guard     *model.Guard
-	Reach     model.Reachability
+	// Positional holds $1.. when the caller supplied them.
+	Positional []model.Value
+	Dialect    string
+	Guard      *model.Guard
+	Reach      model.Reachability
 }
 
 // NodeContext converts to the public form.
@@ -325,10 +327,10 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 			Message: fmt.Sprintf("%s program contents are not part of the invocation", p.Language)})
 	case p.Source == nil || !p.Source.Concrete():
 		action.Kind = model.ProcessUnresolved
-		action.Process.Reason = "program source is not literal"
+		action.Process.Reason = "program source is not available literally"
 		b.AddAction(id, action)
 		b.Node(id).Syntax = model.SyntaxUnsupported
-		b.Diag(model.Diagnostic{Code: model.DiagUnresolvedBinding, Node: id, Message: "program source contains unresolved expansion"})
+		b.Diag(model.Diagnostic{Code: model.DiagUnresolvedBinding, Node: id, Message: "program source is not available literally (unresolved expansion or unknown stdin)"})
 	default:
 		b.AddAction(id, action)
 		if p.SourceID == "" && p.Source.Span != nil {
@@ -346,7 +348,8 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 		defer b.Leave()
 		inner := ctx
 		inner.Guard, inner.Reach = nil, model.ReachAlways
-		inner.Dialect = p.Dialect
+		inner.Dialect, inner.Positional = p.Dialect, p.Args
+		inner.Env = mergeEnv(ctx.Env, cmd.Env)
 		if p.Language == "shell" && b.Shell != nil {
 			b.Shell(b, id, []byte(p.Source.Text), p.SourceID, inner)
 			return id
@@ -359,4 +362,18 @@ func (b *Builder) RunProgram(parent string, p rules.Program, cmd rules.Command, 
 		b.partial = true
 	}
 	return id
+}
+
+func mergeEnv(base, extra map[string]model.Value) map[string]model.Value {
+	if len(extra) == 0 {
+		return base
+	}
+	out := make(map[string]model.Value, len(base)+len(extra))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
 }

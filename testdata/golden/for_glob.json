@@ -1,0 +1,188 @@
+{
+  "schema_version": "0.1.0",
+  "id": "an_c7af1523c4816781710a426b",
+  "invocation": "shell",
+  "versions": {
+    "analyzer": "0.1.0",
+    "ruleset": "690e665015dfefe0/177fa9a05e5cc644",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "shell",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "shell",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 34
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "loop",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 34
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "for",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s0",
+        "start": 18,
+        "end": 29
+      },
+      "reachability": "repeated",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "wc",
+          "span": {
+            "source": "s0",
+            "start": 18,
+            "end": 20
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-l",
+            "span": {
+              "source": "s0",
+              "start": 21,
+              "end": 23
+            }
+          },
+          {
+            "knowledge": "glob",
+            "text": "*.md",
+            "assumptions": [
+              "one match of the glob *.md"
+            ],
+            "span": {
+              "source": "s0",
+              "start": 25,
+              "end": 27
+            }
+          }
+        ]
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n4",
+      "kind": "process.execute",
+      "evidence": {
+        "basis": "syntax",
+        "assumptions": [
+          "no rule for \"wc\"; effects unknown"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 18,
+            "end": 29
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "wc",
+          "span": {
+            "source": "s0",
+            "start": 18,
+            "end": 20
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "-l",
+            "span": {
+              "source": "s0",
+              "start": 21,
+              "end": 23
+            }
+          },
+          {
+            "knowledge": "glob",
+            "text": "*.md",
+            "assumptions": [
+              "one match of the glob *.md"
+            ],
+            "span": {
+              "source": "s0",
+              "start": 25,
+              "end": 27
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "shell",
+      "length": 34,
+      "text": "for f in *.md; do wc -l \"$f\"; done"
+    }
+  ]
+}

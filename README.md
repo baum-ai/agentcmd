@@ -17,7 +17,7 @@ environment, and builds with `CGO_ENABLED=0`.
 | Milestone | State |
 |---|---|
 | M0 evidence, model decisions, dependency qualification | done |
-| M1 canonical model and library skeleton | planned |
+| M1 canonical model and library skeleton | done |
 | M2 shell structure, state, guarded actions | planned |
 | M3 shell/native rules and CLI | planned |
 | M4 embedded Python and JavaScript | planned |
@@ -31,3 +31,21 @@ environment, and builds with `CGO_ENABLED=0`.
 CGO_ENABLED=0 go test ./...
 go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 ```
+
+## Usage
+
+```go
+e, err := toolparser.New(toolparser.Config{
+    Rules:  standard.Rules(),      // rules/standard
+    Native: nativestd.Bindings(),  // native/standard
+})
+analysis, err := e.AnalyzeShell(ctx, []byte("cat README.md"), model.ExecutionContext{
+    WorkingDir: model.KnownFact("/workspace/project", "reported"),
+    Shell:      model.KnownFact("bash", "reported"),
+    Namespace:  model.Namespace{Kind: model.NamespaceHost},
+})
+```
+
+`Analyze` takes a canonical `model.Invocation` (JSON arguments, text, argv,
+inline source, patch or blob). Structured tool inputs go through native
+bindings; text inputs are analyzed as shell only when a binding says so.

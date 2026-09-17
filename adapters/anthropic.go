@@ -28,7 +28,11 @@ func (a Anthropic) Decode(line []byte) ([]Record, error) {
 	session := firstNonEmpty(str(m, "session"), str(m, "message_id"))
 	switch str(m, "type") {
 	case "tool_use":
-		return []Record{{Call: a.toolUse(m, session)}}, nil
+		call, err := a.toolUse(m, session)
+		if err != nil {
+			return nil, err
+		}
+		return []Record{{Call: call}}, nil
 	case "tool_result":
 		obs := model.Observation{Kind: model.ObsToolResult, Basis: model.BasisToolReport, Relation: model.RelationInforms, Collector: a.Name(), Detail: textOf(m["content"])}
 		if m["is_error"] != nil {
@@ -65,7 +69,11 @@ func (a Anthropic) Decode(line []byte) ([]Record, error) {
 		for _, b := range blocks {
 			switch str(b, "type") {
 			case "tool_use":
-				out = append(out, Record{Call: a.toolUse(b, session)})
+				call, err := a.toolUse(b, session)
+				if err != nil {
+					return nil, err
+				}
+				out = append(out, Record{Call: call})
 			case "tool_result":
 				if b["session"] == nil && session != "" {
 					b["session"], _ = json.Marshal(session)
@@ -88,11 +96,15 @@ func streamKey(m map[string]json.RawMessage) string {
 	return fmt.Sprintf("block:%d", intOf(m["index"]))
 }
 
-func (a Anthropic) toolUse(m map[string]json.RawMessage, session string) *Call {
+func (a Anthropic) toolUse(m map[string]json.RawMessage, session string) (*Call, error) {
+	name := str(m, "name")
+	if name == "" {
+		return nil, fmt.Errorf("anthropic: tool_use without name")
+	}
 	input := m["input"]
 	if input == nil {
 		input = json.RawMessage("{}")
 	}
-	return &Call{Session: session, CallID: str(m, "id"), Provider: "anthropic", Tool: model.ToolIdentity{Namespace: "anthropic", Name: str(m, "name")},
-		Input: model.Input{Kind: model.InputJSON, JSON: input}, Snapshot: true}
+	return &Call{Session: session, CallID: str(m, "id"), Provider: "anthropic", Tool: model.ToolIdentity{Namespace: "anthropic", Name: name},
+		Input: model.Input{Kind: model.InputJSON, JSON: input}, Snapshot: true}, nil
 }

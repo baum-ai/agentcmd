@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Canonical decodes this project's own record shapes: a model.Invocation

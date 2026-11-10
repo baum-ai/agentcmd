@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Attach adds an observation to the analysis, choosing the subject from the

@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Request asks for one file.

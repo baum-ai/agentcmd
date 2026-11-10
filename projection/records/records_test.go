@@ -1,4 +1,4 @@
-package recountable
+package records
 
 import (
 	"context"
@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd"
-	"github.com/lastpersonlabs/agentcmd/model"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd"
+	"github.com/baum-ai/agentcmd/model"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func TestProjectFlattensWithoutSourceText(t *testing.T) {

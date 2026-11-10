@@ -13,15 +13,15 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/internal/analysis"
-	"github.com/lastpersonlabs/agentcmd/internal/languages"
-	"github.com/lastpersonlabs/agentcmd/internal/languages/treesitter"
-	"github.com/lastpersonlabs/agentcmd/internal/shell"
-	"github.com/lastpersonlabs/agentcmd/internal/source"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/native"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/internal/analysis"
+	"github.com/baum-ai/agentcmd/internal/languages"
+	"github.com/baum-ai/agentcmd/internal/languages/treesitter"
+	"github.com/baum-ai/agentcmd/internal/shell"
+	"github.com/baum-ai/agentcmd/internal/source"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/native"
+	"github.com/baum-ai/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 // Version of the analyzer, recorded in every result.

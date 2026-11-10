@@ -1,10 +1,10 @@
-// Package recountable projects an analysis into flat, indexable records for
-// the Recountable integration: stable evidence IDs, namespaced resources,
+// Package records projects an analysis into flat, indexable records for
+// downstream indexers: stable evidence IDs, namespaced resources,
 // intents, unknown reasons and observation links. It performs no causal
 // inference: matching sources to commits stays outside this library.
-package recountable
+package records
 
-import "github.com/lastpersonlabs/agentcmd/model"
+import "github.com/baum-ai/agentcmd/model"
 
 // ProjectionVersion changes when the record shape changes.
 const ProjectionVersion = "1"

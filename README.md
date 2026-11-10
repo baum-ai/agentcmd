@@ -9,7 +9,7 @@ It can analyze a single shell command, a stream of provider tool-call records
 (OpenAI, Anthropic, Gemini), or a coding agent's own on-disk session
 transcript (Claude Code, Codex CLI) directly — no export step needed.
 
-The module path is `github.com/lastpersonlabs/agentcmd`; the reference CLI is
+The module path is `github.com/baum-ai/agentcmd`; the reference CLI is
 `cmd/agentcmd`.
 
 The library never executes input, never reads the host filesystem or
@@ -150,7 +150,7 @@ input order; the callback's error aborts processing. See
 bounds, and [`render`](render) for the JSON and text renderers.
 
 Projections for integrations live in `projection/otel` (OpenTelemetry GenAI
-attributes, no SDK dependency) and `projection/recountable` (flat indexable
+attributes, no SDK dependency) and `projection/records` (flat indexable
 records). Neither is imported by the root package.
 
 ## Documentation

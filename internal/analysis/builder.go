@@ -9,11 +9,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/internal/source"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/native"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/internal/source"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/native"
+	"github.com/baum-ai/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 // Limits bound the work of one analysis. Zero values mean unlimited only in

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/internal/corpus"
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/internal/corpus"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // TestScorecard computes the release scorecard over the corpus and, with

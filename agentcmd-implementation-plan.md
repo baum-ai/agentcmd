@@ -6,7 +6,7 @@
 
 ## 1. Decisions and scope
 
-Build a standalone Go library and reference CLI. Recountable should be a consumer, not a dependency. The library must be usable on one shell command without an agent transcript, and on a normalized native tool invocation without a shell parser.
+Build a standalone Go library and reference CLI. A downstream consumer should not be a dependency. The library must be usable on one shell command without an agent transcript, and on a normalized native tool invocation without a shell parser.
 
 Use a pure-Go production dependency graph: no Python or Node installation, CGo, external interpreter, subprocess execution, model API, database, telemetry backend, or network access is required for analysis. Test-only reference implementations may use other runtimes in isolated CI jobs.
 
@@ -362,7 +362,7 @@ Normalize externally supplied process starts/exits, direct tool results, structu
 
 Retain the original inference and attach confirming or conflicting evidence. A file diff can show net change but not all reads or intermediate writes. A process exit code does not prove every internal operation succeeded. Missing observations do not prove absence of effects.
 
-For Recountable, retain invocation IDs, source spans, resource expressions, rule versions, and explicit observation links. Session/commit causation remains a higher-level evidence problem; this library should not infer exclusive commit ownership from a filename overlap.
+For downstream consumers, retain invocation IDs, source spans, resource expressions, rule versions, and explicit observation links. Session/commit causation remains a higher-level evidence problem; this library should not infer exclusive commit ownership from a filename overlap.
 
 ## 11. Security and privacy boundaries
 
@@ -528,7 +528,7 @@ No dates or throughput claims below imply that work has already been performed. 
 
 **AC-027: Profile and optimize.** Measure 100 MiB/1 GiB end-to-end corpora, investigate allocation and cache retention, and set regression thresholds. Done when benchmarks state actual coverage and retained memory does not grow with processed session length.
 
-**AC-028: Add Recountable and telemetry projections.** Keep these optional; connect stable evidence IDs and namespace/snapshot facts. OpenTelemetry GenAI conventions are an external projection, not the internal action model [S21]. Done when disabling the integration changes neither core analysis nor dependencies required by the root package.
+**AC-028: Add records and telemetry projections.** Keep these optional; connect stable evidence IDs and namespace/snapshot facts. OpenTelemetry GenAI conventions are an external projection, not the internal action model [S21]. Done when disabling the integration changes neither core analysis nor dependencies required by the root package.
 
 **AC-029: Publish compatibility and contributor documentation.** Document supported syntax/tool versions, every rule's assumptions, unknown handling, privacy, upgrade policy, and how to add a fixture/rule. Done when a contributor can implement a small rule without changing the engine.
 
@@ -544,7 +544,7 @@ Do not render static order as observed timestamps. Provide source locations, wra
 
 Use telemetry as a projection: original invocation spans and actual observed execution spans when available; inferred static actions as attributes/events or linked analysis data, not invented runtime spans with fabricated durations. Pin the external semantic-convention version in the exporter [S21].
 
-For Recountable, initially integrate analysis over already-normalized calls rather than duplicating all ingestion logic. Store raw/redacted source references and analysis version so changes can be replayed. Index action kinds, namespaced resources, known test/build intents, unknown reasons, and evidence links. Keep source matching and causal conclusions outside the parser.
+For downstream indexers, initially integrate analysis over already-normalized calls rather than duplicating all ingestion logic. Store raw/redacted source references and analysis version so changes can be replayed. Index action kinds, namespaced resources, known test/build intents, unknown reasons, and evidence links. Keep source matching and causal conclusions outside the parser.
 
 ## 16. First end-to-end acceptance scenario
 

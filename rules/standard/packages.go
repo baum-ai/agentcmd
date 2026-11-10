@@ -3,8 +3,8 @@ package standard
 import (
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 // nodePkgRule covers npm, pnpm, yarn and bun. A script name alone does not

@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 // trackModified records resources an action may change, so later script

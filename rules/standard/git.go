@@ -1,8 +1,8 @@
 package standard
 
 import (
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 // gitRule classifies documented git subcommands conservatively. Aliases,

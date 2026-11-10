@@ -9,7 +9,7 @@ import (
 	"path"
 	"sort"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Command is a simple command as seen by a rule.

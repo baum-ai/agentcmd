@@ -5,10 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/model"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 func snapEngine(t *testing.T, r snapshot.Resolver) *Engine {

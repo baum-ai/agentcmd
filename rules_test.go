@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 type want struct {

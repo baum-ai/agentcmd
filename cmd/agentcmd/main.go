@@ -18,14 +18,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd"
-	"github.com/lastpersonlabs/agentcmd/adapters"
-	"github.com/lastpersonlabs/agentcmd/model"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	"github.com/lastpersonlabs/agentcmd/render"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
-	"github.com/lastpersonlabs/agentcmd/stream"
+	"github.com/baum-ai/agentcmd"
+	"github.com/baum-ai/agentcmd/adapters"
+	"github.com/baum-ai/agentcmd/model"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	"github.com/baum-ai/agentcmd/render"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/stream"
 )
 
 func main() {

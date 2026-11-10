@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // state is the abstract shell state at one program point. Subshells and

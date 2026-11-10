@@ -13,10 +13,10 @@ import (
 
 	ts "github.com/odvcencio/gotreesitter"
 
-	"github.com/lastpersonlabs/agentcmd/internal/analysis"
-	"github.com/lastpersonlabs/agentcmd/internal/languages/treesitter"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/internal/analysis"
+	"github.com/baum-ai/agentcmd/internal/languages/treesitter"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 // Enabled selects the languages that receive semantic analysis.

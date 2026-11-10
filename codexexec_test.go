@@ -771,3 +771,64 @@ func TestCodexExecUnusualProperties(t *testing.T) {
 	a := runExec(t, `tools.exec_command({ cmd: "git add a" /* c */, /* c */ "workdir": "/cm", extra: {cmd: "git push"}, });`, model.InputText, "/w")
 	eq(t, gitDirs(a), "git.stage@/cm")
 }
+
+func TestCodexExecToolsObjectAliases(t *testing.T) {
+	for name, prog := range map[string]string{
+		"alias":           `const t = tools; await t.exec_command({cmd: 'git push'});`,
+		"rename":          `const {exec_command: run} = tools; await run({cmd: 'git push'});`,
+		"rest":            `const {shell, ...others} = tools; await others.exec_command({cmd: 'git push'});`,
+		"spread":          `const all = {...tools}; await all.exec_command({cmd: 'git push'});`,
+		"argument":        `await helper(tools, {cmd: 'git push'});`,
+		"assignment":      `let t; t = tools; await t.exec_command({cmd: 'git push'});`,
+		"destructure mix": `const {exec_command, write_stdin} = tools; await exec_command({cmd: 'git push'});`,
+		"returned":        `const get = () => tools; await get().exec_command({cmd: 'git push'});`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			if !a.Partial || len(actionsOf(a, model.ProcessUnresolved)) < 1 {
+				t.Fatalf("partial=%v %s %v", a.Partial, describeActions(a), a.Diagnostics)
+			}
+			for _, d := range a.Diagnostics {
+				if strings.Contains(d.Message, "nothing to analyze") {
+					t.Fatal("reported as nothing to analyze")
+				}
+			}
+		})
+	}
+	// Following the tools by name is not a reference.
+	for name, prog := range map[string]string{
+		"shorthand destructure": `const {exec_command} = tools; await exec_command({cmd: 'git push'});`,
+		"several tools":         `const {exec_command, shell, apply_patch} = tools; await exec_command({cmd: 'git push'});`,
+		"same-name alias":       `const exec_command = tools.exec_command; await exec_command({cmd: 'git push'});`,
+		"let alias":             `let shell = tools.shell; await shell({command: ['git', 'push']});`,
+		"property key":          `await helper({tools: 1}); await tools.exec_command({cmd: 'git push'});`,
+		"own variable":          `function f(x) { const tools2 = 1; } await tools.exec_command({cmd: 'git push'});`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			if a.Partial || len(actionsOf(a, model.ProcessUnresolved)) != 0 || len(actionsOf(a, model.GitNetwork)) != 1 {
+				t.Fatalf("partial=%v %s %v", a.Partial, describeActions(a), a.Diagnostics)
+			}
+		})
+	}
+	// A different name is an alias, not the tool.
+	a := runExec(t, `const run = tools.exec_command; await run({cmd: 'git push'});`, model.InputText, "/w")
+	if !a.Partial || len(actionsOf(a, model.ProcessUnresolved)) != 1 {
+		t.Fatalf("%s", describeActions(a))
+	}
+}
+
+func TestCodexExecObjectFormReasons(t *testing.T) {
+	for want, prog := range map[string]string{
+		"a getter, method or other property form": `tools.exec_command({cmd: 'git add a', get workdir() { return '/x'; }})`,
+		"a __proto__ property":                    `tools.exec_command({cmd: 'git add a', __proto__: {}})`,
+		"a spread":                                `tools.exec_command({...o})`,
+		"a computed key":                          `tools.exec_command({["c"]: 'x'})`,
+	} {
+		a := runExec(t, prog, model.InputText, "/w")
+		u := actionsOf(a, model.ProcessUnresolved)
+		if len(u) != 1 || !strings.Contains(u[0].Process.Reason, want) {
+			t.Fatalf("want %q: %s", want, describeActions(a))
+		}
+	}
+}

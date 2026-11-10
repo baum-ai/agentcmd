@@ -147,7 +147,7 @@ func scanCodexExec(source string) codexScan {
 			}
 			return r
 		}
-		if name, end, ok := toolReference(tokens, i); ok {
+		if name, end, ok := toolReference(tokens, i, match); ok {
 			if len(out.refs)+len(out.calls)+len(out.patches) >= maxCodexExecCalls {
 				out.truncated = true
 				break
@@ -220,12 +220,20 @@ func callTarget(tokens []token, i int, match []int, declared map[string]bool) (s
 	return name, true
 }
 
-// toolReference reports a use of tools.exec_command, tools.shell,
-// tools.apply_patch or a computed tools[...] at tokens[i] that is not a
-// direct call. It returns a description and the end offset of the reference.
-func toolReference(tokens []token, i int) (string, int, bool) {
-	if tokens[i].kind != tokIdent || tokens[i].value != "tools" || tokens[i-1].isPunct(".") {
+// toolReference reports a use of the tools object at tokens[i] that the scan
+// does not follow: tools.exec_command, tools.shell or tools.apply_patch that
+// is not a direct call, a computed tools[...], or `tools` itself used as a
+// value (`const t = tools`, an argument, a renaming or rest destructure). It
+// returns a description and the end offset of the reference. Not references:
+// a destructure made only of the three tool names (`const {exec_command} =
+// tools`), and `const NAME = tools.NAME` for one of them, which the scan
+// follows by name.
+func toolReference(tokens []token, i int, match []int) (string, int, bool) {
+	if tokens[i].kind != tokIdent || tokens[i].value != "tools" {
 		return "", 0, false
+	}
+	if tokens[i-1].isPunct(".") && !(i >= 3 && tokens[i-2].isPunct(".") && tokens[i-3].isPunct(".")) {
+		return "", 0, false // x.tools, but not ...tools
 	}
 	at := func(k int) token {
 		if k < len(tokens) {
@@ -234,12 +242,14 @@ func toolReference(tokens []token, i int) (string, int, bool) {
 		return token{}
 	}
 	a := i + 1
-	if at(a).isOperator("?") && at(a+1).isPunct(".") {
+	switch {
+	case at(a).isOperator("?") && at(a+1).isPunct("."):
 		a += 2
-	} else if at(a).isPunct(".") {
+	case at(a).isPunct("."):
 		a++
-	} else if !at(a).isPunct("[") {
-		return "", 0, false
+	case at(a).isPunct("["):
+	default:
+		return toolsValue(tokens, i, match)
 	}
 	if at(a).isPunct("[") {
 		if at(a+1).kind == tokString && at(a+1).static && !toolNames[at(a+1).value] && at(a+2).isPunct("]") {
@@ -250,10 +260,53 @@ func toolReference(tokens []token, i int) (string, int, bool) {
 	if at(a).kind != tokIdent || !toolNames[at(a).value] {
 		return "", 0, false
 	}
+	name := at(a).value
 	if at(a+1).isPunct("(") || at(a+1).isOperator("?") && at(a+2).isPunct(".") && at(a+3).isPunct("(") {
 		return "", 0, false // a direct call
 	}
-	return "tools." + at(a).value, at(a).end, true
+	if i >= 3 && tokens[i-1].isOperator("=") && tokens[i-2].kind == tokIdent && tokens[i-2].value == name &&
+		tokens[i-3].kind == tokIdent && (tokens[i-3].value == "const" || tokens[i-3].value == "let" || tokens[i-3].value == "var") {
+		return "", 0, false // const exec_command = tools.exec_command
+	}
+	return "tools." + name, at(a).end, true
+}
+
+// toolsValue handles `tools` not followed by a member access: a use of the
+// object as a value, unless it is a declaration, a property key or the
+// destructure of tool names.
+func toolsValue(tokens []token, i int, match []int) (string, int, bool) {
+	prev := tokens[i-1]
+	next := token{}
+	if i+1 < len(tokens) {
+		next = tokens[i+1]
+	}
+	switch {
+	case prev.kind == tokIdent && (prev.value == "const" || prev.value == "let" || prev.value == "var" || prev.value == "function" || prev.value == "class"):
+		return "", 0, false // the program's own variable named tools
+	case (prev.isPunct("{") || prev.isPunct(",")) && next.isPunct(":"):
+		return "", 0, false // a property key
+	case prev.isOperator("=") && i >= 2 && tokens[i-2].isPunct("}") && match[i-2] > 0 && toolNamesOnly(tokens[match[i-2]+1:i-2]):
+		return "", 0, false // const {exec_command, shell} = tools
+	}
+	return "tools", tokens[i].end, true
+}
+
+// toolNamesOnly reports whether the tokens are shorthand tool names
+// separated by commas, the inside of `{exec_command, shell}`.
+func toolNamesOnly(toks []token) bool {
+	if len(toks) == 0 {
+		return false
+	}
+	for k, t := range toks {
+		if k%2 == 0 {
+			if t.kind != tokIdent || !toolNames[t.value] {
+				return false
+			}
+		} else if !t.isPunct(",") {
+			return false
+		}
+	}
+	return true
 }
 
 // declaredNames returns the tool names the program declares itself
@@ -482,7 +535,8 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 	if callee == "shell" {
 		keys = "command"
 	}
-	var seenCmd, seenDir, opaque, dup bool
+	var seenCmd, seenDir, dup bool
+	opaque := ""
 	depth := 0
 	steps := 0
 	for j := i + 1; j < closeIdx; j++ {
@@ -492,13 +546,13 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 		switch {
 		case t.isPunct("{"), t.isPunct("["), t.isPunct("("):
 			if atProperty && t.text == "[" {
-				opaque = true // a computed key
+				opaque = "a computed key"
 			}
 			depth++
 		case t.isPunct("}"), t.isPunct("]"), t.isPunct(")"):
 			depth--
 		case atProperty && t.isPunct("."):
-			opaque = true // a spread
+			opaque = "a spread"
 		case atProperty && t.isKey() && j+2 < len(tokens) && tokens[j+1].isPunct(":"):
 			switch t.value {
 			case keys:
@@ -511,7 +565,7 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 					call.CmdStart, call.CmdEnd = tokens[j+2].start, tokens[j+2].end
 				}
 			case "__proto__":
-				opaque = true // may supply inherited properties
+				opaque = "a __proto__ property"
 			case "workdir":
 				if seenDir {
 					dup = true
@@ -542,14 +596,14 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 				call.HasWorkdir, call.WorkdirStatic = true, false
 			}
 		case atProperty && (t.kind == tokIdent || t.kind == tokString) && j+1 < len(tokens) && !tokens[j+1].isPunct(":") && !tokens[j+1].isPunct(",") && !tokens[j+1].isPunct("}"):
-			opaque = true // a getter, method or other form that can supply the command
+			opaque = "a getter, method or other property form"
 		}
 	}
 	switch {
 	case dup:
 		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call repeats a property, so the last one wins at run time"
-	case opaque:
-		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call has a spread or computed key that may set the command"
+	case opaque != "":
+		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call has "+opaque+" that may set the command"
 	case !seenCmd:
 		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call has no static "+keys+" property"
 	case !call.CommandStatic:

@@ -82,7 +82,7 @@ func bindCodexExec(inv *model.Invocation) (native.Result, error) {
 	for _, r := range scan.refs {
 		flow = flow || r.Reach != model.ReachAlways
 		res.Parts = append(res.Parts, native.Part{Reach: r.Reach, Span: span(r.Start, r.End),
-			Unresolved:  "the program refers to " + r.Name + " without calling it directly, so its calls are not followed",
+			Unresolved:  refReason(r.Name),
 			Assumptions: []string{"the program is not executed; its values and control flow are not modeled"}})
 	}
 	for _, p := range scan.patches {
@@ -154,4 +154,11 @@ func codexExecProgram(inv *model.Invocation) (string, error) {
 		return *in.Input, nil
 	}
 	return "", fmt.Errorf("tool %s expects text or JSON input, got %s", inv.Tool.Name, inv.Input.Kind)
+}
+
+func refReason(name string) string {
+	if name == "tools" {
+		return "the program uses the tools object as a value (an alias, argument or destructure), so calls through it are not followed"
+	}
+	return "the program refers to " + name + " without calling it directly, so its calls are not followed"
 }

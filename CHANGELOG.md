@@ -50,7 +50,7 @@ IDs change, as they do whenever the analyzer version or a ruleset changes.
   `tools?.name(...)` and `tools.name?.(...)`, ignores a bare `shell`,
   `exec_command` or `apply_patch` the program declares itself, and reports any
   other reference to those tools (`const run = tools.exec_command`,
-  `tools[name](...)`) as an unresolved part. Getters, methods and `__proto__`
+  `tools[name](...)`, `const t = tools`) as an unresolved part. Getters, methods and `__proto__`
   in the argument object make a call unresolved, and an unterminated string,
   template literal or comment is a `syntax_error` and makes the result
   partial. `std/codex/shell` is version 2 (relative `workdir` with an

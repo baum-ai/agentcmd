@@ -8,7 +8,7 @@ Production packages build with `CGO_ENABLED=0` and depend on:
 
 - `mvdan.cc/sh/v3/syntax` (BSD-3) for shell syntax.
 - `github.com/odvcencio/gotreesitter` (MIT) and its `grammars` package for
-  Python and JavaScript, behind `internal/languages`.
+  Python and JavaScript, behind the optional `languages` package.
 
 The analyzer never executes input, never runs the mvdan interpreter or
 expansion helpers, never reads the host filesystem or environment, and makes
@@ -21,6 +21,8 @@ Python and JavaScript support is conditional on the qualification recorded in
 ## Consequences
 
 - Binary size: the default `grammars` build embeds all grammar blobs
-  (~16 MiB); consumers that care use the upstream `grammar_subset` build tags.
+  (tens of MiB). The tree-sitter runtime is linked only by programs that
+  import the optional `languages` package; those that care also use the
+  upstream `grammar_subset` build tags.
 - A parser that cannot honor cancellation is bounded by size limits and its
   own timeout; process-level isolation is the application's job.

@@ -20,6 +20,7 @@ import (
 
 	"github.com/baum-ai/agentcmd"
 	"github.com/baum-ai/agentcmd/adapters"
+	"github.com/baum-ai/agentcmd/languages"
 	"github.com/baum-ai/agentcmd/model"
 	nstd "github.com/baum-ai/agentcmd/native/standard"
 	"github.com/baum-ai/agentcmd/render"
@@ -127,7 +128,7 @@ func help(args []string, stdout, stderr io.Writer) int {
 }
 
 func newEngine() (*agentcmd.Engine, error) {
-	return agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: agentcmd.Languages{Python: true, JavaScript: true}})
+	return agentcmd.New(agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Frontend: languages.Frontend(), Languages: agentcmd.Languages{Python: true, JavaScript: true}})
 }
 
 func openInput(name string, stdin io.Reader) (io.ReadCloser, error) {
@@ -166,7 +167,7 @@ func analyze(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	defer in.Close()
-	cfg := agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: agentcmd.Languages{Python: true, JavaScript: true}}
+	cfg := agentcmd.Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Frontend: languages.Frontend(), Languages: agentcmd.Languages{Python: true, JavaScript: true}}
 	if *snapRoot != "" {
 		mount := *snapMount
 		if mount == "" {

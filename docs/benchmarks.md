@@ -4,7 +4,7 @@ Measured 17 September 2026 on the development machine (AMD64, 24 hardware
 threads, Go 1.27.1, `CGO_ENABLED=0`, single worker). Re-run with:
 
 ```sh
-CGO_ENABLED=0 go test -run xxx -bench . -benchtime 3s . ./stream ./internal/shell ./internal/languages/treesitter
+CGO_ENABLED=0 go test -run xxx -bench . -benchtime 3s . ./stream ./internal/shell ./internal/treesitter
 ```
 
 | Path | Input | Result | Allocations |

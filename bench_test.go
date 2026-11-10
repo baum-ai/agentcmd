@@ -3,6 +3,8 @@ package agentcmd
 import (
 	"context"
 	"testing"
+
+	"github.com/baum-ai/agentcmd/languages"
 )
 
 func BenchmarkAnalyzeShell1KiB(b *testing.B) {
@@ -22,7 +24,7 @@ func BenchmarkAnalyzeShell1KiB(b *testing.B) {
 }
 
 func BenchmarkAnalyzePythonHeredoc(b *testing.B) {
-	e, _ := New(Config{Rules: stdRules(), Native: stdBindings(), Languages: Languages{Python: true}})
+	e, _ := New(Config{Rules: stdRules(), Native: stdBindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true}})
 	src := []byte("cd service && python - <<'PY'\nfrom pathlib import Path\np = Path(\"config.json\")\np.write_text(p.read_text().replace(\"old\", \"new\"))\nPY\n")
 	ec := ctxWith("/w")
 	b.SetBytes(int64(len(src)))

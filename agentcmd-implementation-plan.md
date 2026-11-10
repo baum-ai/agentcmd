@@ -159,7 +159,7 @@ agentcmd/
   observe/                   # Optional evidence reconciliation
   render/                    # JSON and deterministic human summaries
   internal/shell/            # mvdan frontend and shell state lowering
-  internal/languages/        # Private embedded parser backends
+  languages/                 # Optional embedded Python/JavaScript frontends (tree-sitter)
   internal/analysis/         # Abstract values, scopes, guards, rule dispatch
   internal/source/           # Provenance, source maps, decoding
   internal/limits/            # Shared work/allocation accounting

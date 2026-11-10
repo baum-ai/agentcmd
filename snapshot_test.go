@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/baum-ai/agentcmd/languages"
 	"github.com/baum-ai/agentcmd/model"
 	nstd "github.com/baum-ai/agentcmd/native/standard"
 	rstd "github.com/baum-ai/agentcmd/rules/standard"
@@ -13,7 +14,7 @@ import (
 
 func snapEngine(t *testing.T, r snapshot.Resolver) *Engine {
 	t.Helper()
-	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: Languages{Python: true, JavaScript: true}, Resolver: r})
+	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Resolver: r})
 	if err != nil {
 		t.Fatal(err)
 	}

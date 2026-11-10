@@ -2,7 +2,7 @@
 
 Measured on 17 September 2026, Linux amd64, Go 1.27.1, `CGO_ENABLED=0`.
 Re-run `go test ./internal/...` to reproduce the qualification checks; the
-benchmarks in `internal/languages/treesitter` and `internal/shell` report the
+benchmarks in `internal/treesitter` and `internal/shell` report the
 numbers below.
 
 ## Dependency qualification (AC-003)
@@ -22,7 +22,7 @@ numbers below.
 | Cancellation / limits | `SetTimeoutMicros` stops within ~1 ms of the budget on a 600 KiB input; `SetCancellationFlag` available. Node count is not enforceable inside the backend, so node limits are checked after parsing. |
 | Throughput | 600 KiB / 20k-line Python module parsed in ~1.0 s (~0.6 MiB/s); 100-byte snippets in 0.2–3 ms cold. Deeply nested `((((...))))` × 5000 parsed in 68 ms. |
 | Memory / binary | Default build embeds all 206 grammar blobs (35 MiB binary). With `-tags 'grammar_subset grammar_subset_python grammar_subset_javascript'` the binary is 15 MiB. |
-| Pinning | `go.sum` pins v0.52.0; grammar blobs are part of the module. |
+| Pinning | `go.sum` pins v0.52.0; grammar blobs are part of the module. Linked only through `languages`. |
 
 Consequence: the 1 MiB per-source limit bounds Python/JavaScript parsing at
 roughly two seconds of cooperative work; the parser timeout is set from the
@@ -51,6 +51,12 @@ imported.
 | Shell constructs | simple commands, assignments, lists, pipelines, subshells, groups, if/case, while/until/for, functions, background, redirections, here-docs, command substitution | arithmetic evaluation, arrays beyond literal indexing, traps, `eval`, aliases, coprocesses |
 | Python | pathlib/os/shutil/open/subprocess/glob subset in `docs/semantics.md` | classes, dynamic attribute access, other libraries |
 | JavaScript | fs/fs.promises/child_process/path subset in `docs/semantics.md` | TypeScript-only syntax, non-builtin modules, computed member access |
+| Codex code mode (`exec`) | lexical scan for `exec_command`/`tools.shell` object-literal calls and static `apply_patch`; see `docs/ingestion.md` | program logic: loops, variables, computed commands (reported as `process.unresolved`) |
+
+Python and JavaScript analysis needs the optional `languages` package
+(`Config.Frontend`); the root package, `rules/standard`, `native/standard`,
+`adapters` and `stream` do not import the tree-sitter runtime. The Codex
+code-mode scan is dependency-free and works without it.
 
 ## Limits (defaults in `agentcmd.DefaultLimits`)
 
@@ -78,7 +84,7 @@ milestone in `docs/benchmarks.md`.
 | Path | Input | Result |
 |---|---|---|
 | Shell parse (`internal/shell`) | 1 KiB Bash, 22 lines | 21 µs/op, ~49 MiB/s, ~47k parses/s |
-| Python parse (`internal/languages/treesitter`) | 99-byte snippet | 272 µs/op |
+| Python parse (`internal/treesitter`) | 99-byte snippet | 272 µs/op |
 | JavaScript parse | 58-byte snippet | 166 µs/op |
 | Python parse | 600 KiB module | ~1.0 s |
 

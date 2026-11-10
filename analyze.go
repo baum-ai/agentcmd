@@ -2,8 +2,10 @@
 // them. It produces a deterministic, evidence-backed model.Analysis.
 //
 // The root package depends only on the model, the rule/native contracts and
-// the internal frontends. Built-in rules (rules/standard), bindings
-// (native/standard), adapters, streaming and rendering are opt-in packages.
+// the shell frontend. Built-in rules (rules/standard), bindings
+// (native/standard), adapters, streaming, rendering and the Python and
+// JavaScript frontends (languages, which links tree-sitter) are opt-in
+// packages.
 package agentcmd
 
 import (
@@ -14,8 +16,6 @@ import (
 	"strings"
 
 	"github.com/baum-ai/agentcmd/internal/analysis"
-	"github.com/baum-ai/agentcmd/internal/languages"
-	"github.com/baum-ai/agentcmd/internal/languages/treesitter"
 	"github.com/baum-ai/agentcmd/internal/shell"
 	"github.com/baum-ai/agentcmd/internal/source"
 	"github.com/baum-ai/agentcmd/model"
@@ -35,14 +35,23 @@ type Config struct {
 	Rules []rules.Rule
 	// Native are tool-contract bindings (native/standard.Bindings()).
 	Native []native.Binding
-	// Languages enables embedded-language semantics.
+	// Languages enables embedded-language semantics for the languages the
+	// Frontend supports.
 	Languages Languages
+	// Frontend supplies the embedded-language analyzers
+	// (languages.Frontend()). It is optional: the root package does not link
+	// the tree-sitter runtime, so without a Frontend Python and JavaScript
+	// programs are reported as unsupported whatever Languages says.
+	Frontend Frontend
 	// RetainSourceBytes is the largest source text kept in results.
 	RetainSourceBytes int
 	// Resolver optionally supplies script files and package manifests at the
 	// invocation's snapshot. Without it nothing outside the input is read.
 	Resolver snapshot.Resolver
 }
+
+// Frontend is an optional embedded-language analyzer; see package languages.
+type Frontend = analysis.Frontend
 
 // Engine analyzes invocations. It is immutable and safe for concurrent use.
 type Engine struct {
@@ -71,14 +80,14 @@ func New(cfg Config) (*Engine, error) {
 		return nil, fmt.Errorf("agentcmd: %w", err)
 	}
 	e := &Engine{cfg: cfg, rules: rr, native: nr}
-	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
+	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.Frontend.Runtime, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
 	return e, nil
 }
 
 func (e *Engine) versions() model.Versions {
 	v := model.Versions{Analyzer: Version, Ruleset: e.rules.Fingerprint() + "/" + e.native.Fingerprint(), ShellParser: shell.ParserVersion}
-	if e.cfg.Languages.Python || e.cfg.Languages.JavaScript {
-		v.LanguageRuntime = treesitter.Version
+	if e.cfg.Frontend.Program != nil && (e.cfg.Languages.Python || e.cfg.Languages.JavaScript) {
+		v.LanguageRuntime = e.cfg.Frontend.Runtime
 	}
 	return v
 }
@@ -137,7 +146,21 @@ func (e *Engine) builder(ctx context.Context, store *source.Store) *analysis.Bui
 	b := analysis.New(ctx, store, e.cfg.Limits)
 	b.Rules, b.Native = e.rules, e.native
 	b.Shell = shell.Analyze
-	b.Program = languages.Analyzer(languages.Enabled{Python: e.cfg.Languages.Python, JavaScript: e.cfg.Languages.JavaScript})
+	if fe := e.cfg.Frontend.Program; fe != nil {
+		b.Program = func(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {
+			switch analysis.LanguageKey(p.Language) {
+			case "python":
+				if !e.cfg.Languages.Python {
+					return false
+				}
+			case "javascript":
+				if !e.cfg.Languages.JavaScript {
+					return false
+				}
+			}
+			return fe(b, parent, p, ctx)
+		}
+	}
 	b.Resolver = e.cfg.Resolver
 	return b
 }
@@ -158,7 +181,7 @@ func (e *Engine) finish(ctx context.Context, b *analysis.Builder, inv *model.Inv
 }
 
 func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invocation, actx analysis.Context) {
-	node := model.Node{Parent: root, Kind: model.NodeNative, Span: &model.SourceSpan{Source: "s0", End: b.Store.Len()}, Context: actx.NodeContext(),
+	node := model.Node{Parent: root, Kind: model.NodeNative, Span: &model.SourceSpan{Source: "s0", End: len(b.Store.Text("s0"))}, Context: actx.NodeContext(),
 		Native: &model.NativeCall{Namespace: inv.Tool.Namespace, Tool: inv.Tool.Name}}
 	binding, ok := e.native.Lookup(inv.Tool)
 	if !ok && inv.Input.Kind == model.InputPatch {
@@ -207,18 +230,42 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 		exe, argv := argvValues(res.Exec.Executable, res.Exec.Args)
 		b.RunCommand(id, rules.Command{Executable: exe, Args: argv, Span: model.SourceSpan{Source: "s0", End: len(b.Store.Text("s0"))}}, execCtx)
 	}
+	shells := res.Shells
 	if res.Shell != nil {
+		shells = append([]native.ShellSource{*res.Shell}, shells...)
+	}
+	for _, sh := range shells {
 		sid := "s0"
-		if inv.Input.Kind == model.InputJSON {
+		switch {
+		case sh.Span != nil && inv.Input.Kind != model.InputJSON && sh.Span.Start >= 0 && sh.Span.Start <= sh.Span.End && sh.Span.End <= len(b.Store.Text("s0")):
+			sid = b.Store.DeriveWhole("shell", []byte(sh.Text), "s0", sh.Span.Start, sh.Span.End)
+		case sh.Span != nil:
+			// The program text is decoded from the input, so the nested
+			// text maps approximately onto the whole input.
+			sid = b.Store.DeriveWhole("shell", []byte(sh.Text), "s0", 0, len(b.Store.Text("s0")))
+		case inv.Input.Kind == model.InputJSON:
 			// The command string is a JSON field; unescaping makes the map
 			// approximate, so the whole input is the parent range.
-			sid = b.Store.DeriveWhole("shell", []byte(res.Shell.Text), "s0", 0, b.Store.Len())
+			sid = b.Store.DeriveWhole("shell", []byte(sh.Text), "s0", 0, len(b.Store.Text("s0")))
 		}
 		shellCtx := actx
-		if res.Shell.Dialect != "" {
-			shellCtx.Dialect = res.Shell.Dialect
+		if sh.Dialect != "" {
+			shellCtx.Dialect = sh.Dialect
 		}
-		shell.Analyze(b, id, []byte(res.Shell.Text), sid, shellCtx)
+		switch {
+		case sh.WorkdirUnknown:
+			shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"the tool call's working directory is not statically known"}}
+		case sh.Workdir != "":
+			switch {
+			case strings.HasPrefix(sh.Workdir, "/"):
+				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Clean(sh.Workdir)}
+			case actx.Cwd.Concrete():
+				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Join(actx.Cwd.Text, sh.Workdir)}
+			default:
+				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"relative working directory of the tool call, and the invocation's working directory is not known"}}
+			}
+		}
+		shell.Analyze(b, id, []byte(sh.Text), sid, shellCtx)
 	}
 }
 

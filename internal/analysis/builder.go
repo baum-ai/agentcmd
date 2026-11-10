@@ -51,6 +51,25 @@ func (c Context) NodeContext() model.NodeContext {
 // when the language is not supported by the engine configuration.
 type ProgramFunc func(b *Builder, parent string, p rules.Program, ctx Context) bool
 
+// Frontend is an optional embedded-language analyzer supplied by the caller
+// (see package languages). Runtime names the parser runtime for results.
+type Frontend struct {
+	Runtime string
+	Program ProgramFunc
+}
+
+// LanguageKey normalizes an interpreter language name to the key the
+// engine's Languages switches use: "python", "javascript" or "".
+func LanguageKey(name string) string {
+	switch strings.ToLower(name) {
+	case "python":
+		return "python"
+	case "javascript", "js", "node", "typescript":
+		return "javascript"
+	}
+	return ""
+}
+
 // ShellFunc analyzes shell source under parent.
 type ShellFunc func(b *Builder, parent string, src []byte, sourceID string, ctx Context) string
 

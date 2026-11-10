@@ -1,6 +1,6 @@
 // Package treesitter wraps the pure-Go tree-sitter runtime for the embedded
 // languages the analyzer supports. The wrapped node types stay private to
-// internal/languages.
+// the languages package.
 package treesitter
 
 import (

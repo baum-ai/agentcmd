@@ -19,11 +19,15 @@ test-race:
     go test -race -short ./...
 
 # Vet, build and test under CGO_ENABLED=0 (matches CI's `pure-go` job).
-ci: vet build test fmt-check
+ci: vet build test fmt-check check-deps
 
 # Run go vet.
 vet:
     go vet ./...
+
+# Fail if the shell-only packages link the tree-sitter runtime (matches CI).
+check-deps:
+    test -z "$(go list -deps . ./rules/standard ./native/standard ./adapters ./stream | grep gotreesitter)"
 
 # Format all Go source files in place.
 fmt:

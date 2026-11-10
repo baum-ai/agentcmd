@@ -28,6 +28,54 @@ looks like it should carry a call but does not decode still reports
 `unsupported`, so an unimplemented item kind (Codex's `local_shell_call`, for
 example) is never silently dropped.
 
+## Codex shell tools (`native/standard`)
+
+The `codex` adapter yields these calls; with `-tool-namespace harness` the
+standard bindings interpret them:
+
+| Tool | Input | Analysis |
+|---|---|---|
+| `shell` | `{command: [argv], workdir?}` | the argv, run in `workdir` |
+| `exec_command` | `{cmd, workdir?, ...}` | `cmd` as shell text, run in `workdir`; other fields are ignored |
+| `exec` (code mode) | a JavaScript program: free text, a JSON string, or `{input}` | see below |
+
+For `exec_command`, a non-empty string `workdir` is the working directory of
+the command. A relative `workdir` resolves against the invocation's working
+directory and is unknown when that is unknown. A `workdir` that is present
+but not a string makes the directory unknown (resources then keep their
+relative expressions and are not resolved). Without `workdir` the invocation's
+directory applies.
+
+### Code mode (`exec`)
+
+Code mode wraps tool calls in a JavaScript program, for example
+`text(await tools.exec_command({cmd: "git add a", workdir: "/wt"}))`. The
+binding never runs the program and does not use a JavaScript parser: a small
+lexical scanner (strings, template literals, comments and regular
+expressions are tokenized, so text inside them is not code) finds the calls.
+Each recognized call is analyzed as a nested shell invocation with its own
+working directory and shell state, so a `cd` in one call does not reach the
+next.
+
+| Recognized | Result |
+|---|---|
+| `tools.exec_command({...})` or `exec_command({...})` whose first argument is an object literal with a static `cmd` (string, or template literal without substitutions; JS escapes are decoded; quoted or bare keys) | the shell analysis of `cmd` in `workdir` |
+| `tools.shell({command: [...], workdir})` with a static string array (`bash -lc script` runs the script; other argv are single-quoted words) | as for `shell` |
+| `tools.apply_patch("...")` with a static string | the patch binding |
+| `cmd` is dynamic (identifier, shorthand, concatenation, template with `${}`), or the object has a spread or computed key | a `process.unresolved` action; nothing is guessed |
+| `workdir` is present but dynamic (shorthand, identifier, template with `${}`, concatenation) | the command is analyzed with an unknown working directory |
+| objects not passed directly as the first argument (`const steps = [{cmd: ...}]`, `{opts: {cmd: ...}}`, `exec_command(variable)`), `write_stdin`, `wait`, MCP calls, other JavaScript | ignored |
+
+A derived `command` field stored next to `input` is ignored. A program whose
+brackets do not pair up gets a `syntax_error` warning (the calls found before
+the damage are still analyzed); a program with no recognized call gets an
+`unsupported` info diagnostic; more than 256 commands in one program are
+capped with a `limit_reached` warning. The scan is bounded to a step budget
+linear in the program size. Evidence spans of the nested shell text point at
+the command's string literal in the program when the input is text, and at
+the whole input when it is JSON (the decoded program does not map byte for
+byte).
+
 Provider tool calls carry the provider as namespace (`openai`, `anthropic`,
 `gemini`). Bindings are registered per harness namespace, so the caller states
 which harness produced the records with `ToolNamespace` (CLI:

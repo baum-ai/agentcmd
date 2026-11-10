@@ -34,7 +34,7 @@ Both frontends run on the pure-Go tree-sitter runtime (see
 Nothing is executed or evaluated by an interpreter: the folding above is a
 bounded Go operation over the documented forms.
 
-## Python calls (`internal/languages/python.go`)
+## Python calls (`languages/python.go`)
 
 | Call | Action |
 |---|---|
@@ -55,7 +55,7 @@ bounded Go operation over the documented forms.
 | `os.exec*` | execution of the program |
 | `os.chdir` | changes the abstract working directory |
 
-## JavaScript calls (`internal/languages/javascript.go`)
+## JavaScript calls (`languages/javascript.go`)
 
 Modules: `fs`, `node:fs`, `fs/promises` (normalized to `fs.*`), `fs.promises.*`,
 `child_process`, `path`, `process`; `fs-extra`/`graceful-fs` are treated as

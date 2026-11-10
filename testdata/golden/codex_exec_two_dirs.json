@@ -1,0 +1,426 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_41aa3aed3ff691dfd9d60717",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.0.0",
+    "ruleset": "9695ac7542c7d821/b27c67020f7a26b3",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 144
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 19
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/one"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "and",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 19
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "\u0026\u0026",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/one"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n4",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 6
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "cd",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "cd",
+          "span": {
+            "source": "s1",
+            "start": 0,
+            "end": 2
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "sub",
+            "span": {
+              "source": "s1",
+              "start": 3,
+              "end": 6
+            }
+          }
+        ],
+        "rule": "builtin"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/one/sub",
+          "assumptions": [
+            "directory change to sub succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n4",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 10,
+        "end": 19
+      },
+      "guard": {
+        "node": "n5",
+        "on": "success"
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 10,
+            "end": 13
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "add",
+            "span": {
+              "source": "s1",
+              "start": 14,
+              "end": 17
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "x",
+            "span": {
+              "source": "s1",
+              "start": 18,
+              "end": 19
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "derived",
+          "text": "/one/sub",
+          "assumptions": [
+            "directory change to sub succeeded"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s2",
+        "start": 0,
+        "end": 9
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/two"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "parent": "n7",
+      "kind": "command",
+      "span": {
+        "source": "s2",
+        "start": 0,
+        "end": 9
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s2",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "add",
+            "span": {
+              "source": "s2",
+              "start": 4,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "y",
+            "span": {
+              "source": "s2",
+              "start": 8,
+              "end": 9
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/two"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n6",
+      "kind": "git.stage",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/one/sub",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        },
+        {
+          "role": "pathspec",
+          "expression": "x",
+          "resolved": "/one/sub/x",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s1",
+            "start": 18,
+            "end": 19
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 10,
+            "end": 19
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "add"
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n8",
+      "kind": "git.stage",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/two",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        },
+        {
+          "role": "pathspec",
+          "expression": "y",
+          "resolved": "/two/y",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s2",
+            "start": 8,
+            "end": 9
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "1",
+        "spans": [
+          {
+            "source": "s2",
+            "start": 0,
+            "end": 9
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "add"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 144,
+      "text": "await Promise.all([tools.exec_command({cmd: \"cd sub \u0026\u0026 git add x\", workdir: \"/one\"}), tools.exec_command({cmd: \"git add y\", workdir: \"/two\"})]);"
+    },
+    {
+      "id": "s1",
+      "kind": "shell",
+      "length": 19,
+      "text": "cd sub \u0026\u0026 git add x",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 19,
+            "from_start": 44,
+            "from_end": 65
+          }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "kind": "shell",
+      "length": 9,
+      "text": "git add y",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 9,
+            "from_start": 111,
+            "from_end": 122
+          }
+        ]
+      }
+    }
+  ]
+}

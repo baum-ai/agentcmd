@@ -83,11 +83,43 @@ Build an engine once and reuse it; it holds no per-call state.
 
 ```go
 e, err := agentcmd.New(agentcmd.Config{
-    Rules:     standard.Rules(),      // rules/standard
-    Native:    nativestd.Bindings(),  // native/standard
+    Rules:  standard.Rules(),      // rules/standard
+    Native: nativestd.Bindings(),  // native/standard
+})
+```
+
+### Embedded Python and JavaScript (opt-in)
+
+Shell analysis, rules, native bindings, adapters and streams do not depend on
+a tree-sitter runtime. Analysis of Python and JavaScript sources (`python -c`,
+`node -e`, heredoc scripts) lives in the separate package `languages`, which
+you import and pass to the engine, like a `database/sql` driver:
+
+```go
+import "github.com/baum-ai/agentcmd/languages"
+
+e, err := agentcmd.New(agentcmd.Config{
+    Rules:     standard.Rules(),
+    Native:    nativestd.Bindings(),
+    Frontend:  languages.Frontend(),
     Languages: agentcmd.Languages{Python: true, JavaScript: true},
 })
 ```
+
+Without `Frontend`, those programs are still extracted but reported as
+`unsupported` programs (the invocation is partial); nothing else changes.
+Only a program that imports `languages` links
+[gotreesitter](https://github.com/odvcencio/gotreesitter), which by default
+embeds all ~206 grammars. If you opt in and only need agentcmd's languages,
+build with `-tags 'grammar_subset grammar_subset_javascript grammar_subset_python'`.
+Keep both language tags: omitting the tag of a language agentcmd uses makes
+analysis of that language panic at runtime. The reference CLI opts in.
+
+Measured on linux/amd64 with Go 1.26.10, `CGO_ENABLED=0 -trimpath
+-ldflags='-s -w'`: the reference CLI is 30.1 MB with all grammars and 11.6 MB
+with the tags above; a shell-only program using the root package,
+`rules/standard`, `native/standard`, `adapters` and `stream` is 3.6 MB (an
+empty hello-world program is 1.6 MB).
 
 ### Analyze a shell command
 

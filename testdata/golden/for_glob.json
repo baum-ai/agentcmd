@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "id": "an_9a965e09037fe9e4f97310ef",
+  "id": "an_884a0d44db51403b36a707ee",
   "invocation": "shell",
   "versions": {
     "analyzer": "1.0.0",
-    "ruleset": "9695ac7542c7d821/9e5c4870cf4a3144",
+    "ruleset": "9695ac7542c7d821/b27c67020f7a26b3",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },
   "nodes": [

@@ -17,6 +17,18 @@ type ShellSource struct {
 	// Field is the JSON pointer of the input field, for provenance.
 	Field   string
 	Dialect string
+	// Workdir, when non-empty, is the working directory the text runs in. A
+	// relative value resolves against the invocation's working directory and
+	// is unknown when that is not known.
+	Workdir string
+	// WorkdirUnknown says the tool call names a working directory that is
+	// not statically known; the text is then analyzed with an unknown one.
+	// It takes precedence over Workdir.
+	WorkdirUnknown bool
+	// Span, when set, is the range of the root source (s0) the text was
+	// taken from, for providers that carry shell text inside a larger
+	// program. Without it the text maps onto the whole input.
+	Span *model.SourceSpan
 }
 
 // Exec asks the engine to analyze a literal argv without shell parsing.
@@ -31,7 +43,11 @@ type Exec struct {
 type Result struct {
 	Actions []model.Action
 	Shell   *ShellSource
-	Exec    *Exec
+	// Shells are further shell texts, each analyzed independently with its
+	// own working directory and shell state (a call that runs several
+	// commands, such as a code-mode program). They follow Shell.
+	Shells []ShellSource
+	Exec   *Exec
 	// Detail labels the native node (e.g. "read", "edit", "patch").
 	Detail      string
 	Assumptions []string

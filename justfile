@@ -25,9 +25,9 @@ ci: vet build test fmt-check check-deps
 vet:
     go vet ./...
 
-# Fail if the shell-only packages link the tree-sitter runtime (matches CI).
+# Fail if a package other than languages and cmd links the tree-sitter runtime (matches CI).
 check-deps:
-    test -z "$(go list -deps . ./rules/standard ./native/standard ./adapters ./stream | grep gotreesitter)"
+    test -z "$(go list -deps $(go list ./... | grep -v -e '/languages$' -e '/cmd/' -e '/internal/treesitter') | grep gotreesitter)"
 
 # Format all Go source files in place.
 fmt:
@@ -40,6 +40,7 @@ fmt-check:
 # Run short fuzz smoke tests (matches CI's `fuzz-smoke` job).
 fuzz-smoke:
     go test . -run xxx -fuzz FuzzAnalyzeShell -fuzztime 60s
+    go test . -run xxx -fuzz FuzzCodexExec -fuzztime 30s
     go test ./stream -run xxx -fuzz FuzzProcess -fuzztime 30s
     go test ./adapters -run xxx -fuzz FuzzDecode -fuzztime 30s
 

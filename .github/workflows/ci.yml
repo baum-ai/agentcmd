@@ -1,33 +1,36 @@
 name: ci
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   pure-go:
     runs-on: ubuntu-latest
     env: { CGO_ENABLED: "0" }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with: { go-version-file: go.mod }
       - run: go vet ./...
       - run: go build ./...
-      - name: root, rules, bindings, adapters and stream do not link tree-sitter
-        run: test -z "$(go list -deps . ./rules/standard ./native/standard ./adapters ./stream | grep gotreesitter)"
+      - name: only languages and cmd link tree-sitter
+        run: test -z "$(go list -deps $(go list ./... | grep -v -e '/languages$' -e '/cmd/' -e '/internal/treesitter') | grep gotreesitter)"
       - run: go test ./...
       - run: test -z "$(gofmt -l .)"
   race:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with: { go-version-file: go.mod }
       - run: go test -race -short ./...
   fuzz-smoke:
     runs-on: ubuntu-latest
     env: { CGO_ENABLED: "0" }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with: { go-version-file: go.mod }
       - run: go test . -run xxx -fuzz FuzzAnalyzeShell -fuzztime 60s
+      - run: go test . -run xxx -fuzz FuzzCodexExec -fuzztime 30s
       - run: go test ./stream -run xxx -fuzz FuzzProcess -fuzztime 30s
       - run: go test ./adapters -run xxx -fuzz FuzzDecode -fuzztime 30s

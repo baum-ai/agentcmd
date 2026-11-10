@@ -6,7 +6,7 @@
 
 ## 1. Decisions and scope
 
-Build a standalone Go library and reference CLI. A downstream consumer should not be a dependency. The library must be usable on one shell command without an agent transcript, and on a normalized native tool invocation without a shell parser.
+Build a standalone Go library and reference CLI. The library must not depend on any consumer. The library must be usable on one shell command without an agent transcript, and on a normalized native tool invocation without a shell parser.
 
 Use a pure-Go production dependency graph: no Python or Node installation, CGo, external interpreter, subprocess execution, model API, database, telemetry backend, or network access is required for analysis. Test-only reference implementations may use other runtimes in isolated CI jobs.
 

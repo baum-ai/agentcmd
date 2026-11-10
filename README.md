@@ -18,8 +18,14 @@ environment, and builds with `CGO_ENABLED=0`.
 ## Getting started
 
 ```sh
+go install github.com/baum-ai/agentcmd/cmd/agentcmd@latest
+# or, from a checkout:
 go build -o agentcmd ./cmd/agentcmd
 ```
+
+As a library: `go get github.com/baum-ai/agentcmd@latest`.
+
+Requires Go 1.26 or newer.
 
 ### Parse a coding agent's own session logs
 
@@ -112,8 +118,9 @@ Only a program that imports `languages` links
 [gotreesitter](https://github.com/odvcencio/gotreesitter), which by default
 embeds all ~206 grammars. If you opt in and only need agentcmd's languages,
 build with `-tags 'grammar_subset grammar_subset_javascript grammar_subset_python'`.
-Keep both language tags: omitting the tag of a language agentcmd uses makes
-analysis of that language panic at runtime. The reference CLI opts in.
+Keep both language tags: if a tag is omitted, analysis of that language
+reports a `syntax_error` diagnostic ("grammar is not linked into this build")
+and the result is partial. The reference CLI opts in.
 
 Measured on linux/amd64 with Go 1.26.10, `CGO_ENABLED=0 -trimpath
 -ldflags='-s -w'`: the reference CLI is 30.1 MB with all grammars and 11.6 MB
@@ -209,3 +216,15 @@ records). Neither is imported by the root package.
 CGO_ENABLED=0 go test ./...
 go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 ```
+
+## Stability
+
+agentcmd is pre-1.0 in practice: the Go API (`Config`, the `native` and
+`rules` contracts, the packages listed in `docs/versioning.md`) may change
+between releases, and each change is recorded in [`CHANGELOG.md`](CHANGELOG.md).
+The JSON output is versioned separately (`model.SchemaVersion`, semantic
+versioning, see [`docs/versioning.md`](docs/versioning.md)).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

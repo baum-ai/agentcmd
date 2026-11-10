@@ -25,7 +25,7 @@ import (
 )
 
 // Version of the analyzer, recorded in every result.
-const Version = "1.0.0"
+const Version = "1.1.0"
 
 // Config is frozen by New. The zero value analyzes structure only: no
 // command rules, no native bindings, no embedded languages.
@@ -41,7 +41,8 @@ type Config struct {
 	// Frontend supplies the embedded-language analyzers
 	// (languages.Frontend()). It is optional: the root package does not link
 	// the tree-sitter runtime, so without a Frontend Python and JavaScript
-	// programs are reported as unsupported whatever Languages says.
+	// programs are reported as unsupported whatever Languages says. Its
+	// representation is private; obtain one from package languages.
 	Frontend Frontend
 	// RetainSourceBytes is the largest source text kept in results.
 	RetainSourceBytes int
@@ -80,14 +81,14 @@ func New(cfg Config) (*Engine, error) {
 		return nil, fmt.Errorf("agentcmd: %w", err)
 	}
 	e := &Engine{cfg: cfg, rules: rr, native: nr}
-	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, cfg.Frontend.Runtime, cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
+	e.options = model.Fingerprint([]any{cfg.Limits, cfg.Languages, analysis.FrontendRuntime(cfg.Frontend), cfg.RetainSourceBytes, rr.Fingerprint(), nr.Fingerprint(), cfg.Resolver != nil})
 	return e, nil
 }
 
 func (e *Engine) versions() model.Versions {
 	v := model.Versions{Analyzer: Version, Ruleset: e.rules.Fingerprint() + "/" + e.native.Fingerprint(), ShellParser: shell.ParserVersion}
-	if e.cfg.Frontend.Program != nil && (e.cfg.Languages.Python || e.cfg.Languages.JavaScript) {
-		v.LanguageRuntime = e.cfg.Frontend.Runtime
+	if analysis.FrontendProgram(e.cfg.Frontend) != nil && (e.cfg.Languages.Python || e.cfg.Languages.JavaScript) {
+		v.LanguageRuntime = analysis.FrontendRuntime(e.cfg.Frontend)
 	}
 	return v
 }
@@ -146,20 +147,20 @@ func (e *Engine) builder(ctx context.Context, store *source.Store) *analysis.Bui
 	b := analysis.New(ctx, store, e.cfg.Limits)
 	b.Rules, b.Native = e.rules, e.native
 	b.Shell = shell.Analyze
-	if fe := e.cfg.Frontend.Program; fe != nil {
-		b.Program = func(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {
-			switch analysis.LanguageKey(p.Language) {
-			case "python":
-				if !e.cfg.Languages.Python {
-					return false
-				}
-			case "javascript":
-				if !e.cfg.Languages.JavaScript {
-					return false
-				}
-			}
-			return fe(b, parent, p, ctx)
+	fe := analysis.FrontendProgram(e.cfg.Frontend)
+	b.Program = func(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {
+		key := analysis.LanguageKey(p.Language)
+		if (key == "python" && !e.cfg.Languages.Python) || (key == "javascript" && !e.cfg.Languages.JavaScript) || key == "" {
+			return false
 		}
+		if fe == nil {
+			// The language is enabled but nothing was supplied to analyze it.
+			b.Node(parent).Syntax = model.SyntaxUnsupported
+			b.Diag(model.Diagnostic{Code: model.DiagUnsupported, Node: parent, Message: key + " analysis requires a language frontend (Config.Frontend, languages.Frontend())"})
+			b.MarkPartial()
+			return true
+		}
+		return fe(b, parent, p, ctx)
 	}
 	b.Resolver = e.cfg.Resolver
 	return b
@@ -209,6 +210,16 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 	for _, d := range res.Diagnostics {
 		d.Node = id
 		b.Diag(d)
+		// A binding that could not read all of its input says so; the
+		// result is then partial (ADR 0007).
+		switch d.Code {
+		case model.DiagLimitReached:
+			n.Syntax = model.SyntaxLimit
+			b.MarkPartial()
+		case model.DiagSyntaxError:
+			n.Syntax = model.SyntaxPartial
+			b.MarkPartial()
+		}
 	}
 	for _, a := range res.Actions {
 		a.Evidence.Rule, a.Evidence.RuleVersion = binding.ID, binding.Version
@@ -222,10 +233,7 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 	if res.Exec != nil {
 		execCtx := actx
 		if res.Exec.Workdir != "" {
-			execCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: res.Exec.Workdir}
-			if !strings.HasPrefix(res.Exec.Workdir, "/") && actx.Cwd.Concrete() {
-				execCtx.Cwd.Text = path.Join(actx.Cwd.Text, res.Exec.Workdir)
-			}
+			execCtx.Cwd = resolveWorkdir(actx.Cwd, res.Exec.Workdir)
 		}
 		exe, argv := argvValues(res.Exec.Executable, res.Exec.Args)
 		b.RunCommand(id, rules.Command{Executable: exe, Args: argv, Span: model.SourceSpan{Source: "s0", End: len(b.Store.Text("s0"))}}, execCtx)
@@ -256,17 +264,55 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 		case sh.WorkdirUnknown:
 			shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"the tool call's working directory is not statically known"}}
 		case sh.Workdir != "":
-			switch {
-			case strings.HasPrefix(sh.Workdir, "/"):
-				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Clean(sh.Workdir)}
-			case actx.Cwd.Concrete():
-				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Join(actx.Cwd.Text, sh.Workdir)}
-			default:
-				shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"relative working directory of the tool call, and the invocation's working directory is not known"}}
-			}
+			shellCtx.Cwd = resolveWorkdir(actx.Cwd, sh.Workdir)
+		}
+		if sh.Reach != "" {
+			shellCtx.Reach = sh.Reach
 		}
 		shell.Analyze(b, id, []byte(sh.Text), sid, shellCtx)
 	}
+	for _, p := range res.Parts {
+		reach := p.Reach
+		if reach == "" {
+			reach = model.ReachAlways
+		}
+		pctx := actx
+		pctx.Reach = reach
+		target := id
+		switch {
+		case p.Unresolved != "":
+			target = b.Unknown(id, p.Span, pctx, model.DiagUnresolvedBinding, p.Unresolved)
+			if len(p.Actions) == 0 {
+				p.Actions = []model.Action{{Kind: model.ProcessUnresolved, Evidence: model.Evidence{Basis: model.BasisSyntax},
+					Process: &model.ProcessDetail{Executable: model.Unknown(), Shell: true, Reason: p.Unresolved}}}
+			}
+		case reach != model.ReachAlways && len(p.Actions) > 0:
+			child := node
+			child.Parent, child.Reach, child.Span, child.Detail, child.Syntax = id, reach, p.Span, res.Detail, model.SyntaxParsed
+			target = b.AddNode(child)
+		}
+		for _, a := range p.Actions {
+			a.Evidence.Rule, a.Evidence.RuleVersion = binding.ID, binding.Version
+			if len(a.Evidence.Spans) == 0 && p.Span != nil {
+				a.Evidence.Spans = []model.SourceSpan{*p.Span}
+			}
+			a.Evidence.Assumptions = append(a.Evidence.Assumptions, p.Assumptions...)
+			b.AddAction(target, a)
+		}
+	}
+}
+
+// resolveWorkdir is the working directory a tool call's workdir names: an
+// absolute one is used as is, a relative one resolves against the
+// invocation's directory and is unknown when that is unknown.
+func resolveWorkdir(base model.Value, workdir string) model.Value {
+	switch {
+	case strings.HasPrefix(workdir, "/"):
+		return model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Clean(workdir)}
+	case base.Concrete():
+		return model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Join(base.Text, workdir)}
+	}
+	return model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"relative working directory of the tool call, and the invocation's working directory is not known"}}
 }
 
 func contextFrom(ec model.ExecutionContext) analysis.Context {

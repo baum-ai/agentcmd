@@ -35,7 +35,7 @@ func Bindings() []native.Binding {
 			native.Binding{ID: "std/claude-code/WebSearch", Version: "1", Namespace: ns, Tool: "WebSearch", Harness: "claude-code", Doc: "{query}", Bind: bindWebFetch},
 			native.Binding{ID: "std/codex/apply_patch", Version: "1", Namespace: ns, Tool: "apply_patch", Harness: "codex", Doc: "{input: patch text} or free-form patch text", Bind: bindApplyPatch},
 			native.Binding{ID: "std/codex/shell", Version: "1", Namespace: ns, Tool: "shell", Harness: "codex", Doc: "{command: [argv], workdir?, timeout_ms?}", Bind: bindArgvShell},
-			native.Binding{ID: "std/codex/exec_command", Version: "1", Namespace: ns, Tool: "exec_command", Harness: "codex", Doc: "{cmd: string, workdir?}", Bind: bindExecCommand},
+			native.Binding{ID: "std/codex/exec_command", Version: "2", Namespace: ns, Tool: "exec_command", Harness: "codex", Doc: "{cmd: string, workdir?}", Bind: bindExecCommand},
 			native.Binding{ID: "std/codex/exec", Version: "1", Namespace: ns, Tool: "exec", Harness: "codex", Doc: "code mode: JavaScript program calling tools.exec_command({cmd, workdir})", Bind: bindCodexExec},
 		)
 	}

@@ -29,7 +29,7 @@ declared input, build actions with `tool_contract` basis, and return
 independent shell texts, each with its own `Workdir`). Patch text goes through
 `native.PatchResult`. Keep `native/standard` free of heavy dependencies: the
 root package and the standard packages must not import tree-sitter
-(`just check-deps`).
+(`just check-deps`; only `languages` and `cmd` may).
 
 ## Adding a fixture
 

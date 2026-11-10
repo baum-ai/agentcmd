@@ -31,7 +31,7 @@ import (
 // for languages it does not know so they are recorded as unsupported
 // programs.
 func Frontend() analysis.Frontend {
-	return analysis.Frontend{Runtime: treesitter.Version, Program: analyzer}
+	return analysis.NewFrontend(treesitter.Version, analyzer)
 }
 
 func analyzer(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {

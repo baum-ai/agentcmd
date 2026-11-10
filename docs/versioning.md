@@ -12,7 +12,7 @@ loss. Removing or renaming a field is a major bump.
 
 The Go module follows semantic import versioning. `Config`, `Engine`,
 `model`, `rules`, `native`, `snapshot`, `stream`, `adapters`, `observe`,
-`render` and `projection/*` are public. `internal/*` is not.
+`render`, `languages` and `projection/*` are public. `internal/*` is not.
 
 ## Analysis identity
 

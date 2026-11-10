@@ -42,7 +42,7 @@ standard bindings interpret them:
 For `exec_command`, a non-empty string `workdir` is the working directory of
 the command. A relative `workdir` resolves against the invocation's working
 directory and is unknown when that is unknown. A `workdir` that is present
-but not a string makes the directory unknown (resources then keep their
+but not a string, or is empty, makes the directory unknown (resources then keep their
 relative expressions and are not resolved). Without `workdir` the invocation's
 directory applies.
 
@@ -51,30 +51,46 @@ directory applies.
 Code mode wraps tool calls in a JavaScript program, for example
 `text(await tools.exec_command({cmd: "git add a", workdir: "/wt"}))`. The
 binding never runs the program and does not use a JavaScript parser: a small
-lexical scanner (strings, template literals, comments and regular
-expressions are tokenized, so text inside them is not code) finds the calls.
-Each recognized call is analyzed as a nested shell invocation with its own
-working directory and shell state, so a `cd` in one call does not reach the
-next.
+lexical scanner (strings, template literals and their substitutions,
+comments and regular expressions are tokenized, so text inside them is not
+code) finds the calls. Each recognized call is analyzed as a nested shell
+invocation with its own working directory and shell state, so a `cd` in one
+call does not reach the next.
+
+A call is `exec_command(...)`, `shell(...)` or `apply_patch(...)`, bare or
+qualified as `tools.`; a method of any other object (`sandbox.exec_command`)
+and a function or method definition with one of those names are not calls.
 
 | Recognized | Result |
 |---|---|
-| `tools.exec_command({...})` or `exec_command({...})` whose first argument is an object literal with a static `cmd` (string, or template literal without substitutions; JS escapes are decoded; quoted or bare keys) | the shell analysis of `cmd` in `workdir` |
-| `tools.shell({command: [...], workdir})` with a static string array (`bash -lc script` runs the script; other argv are single-quoted words) | as for `shell` |
-| `tools.apply_patch("...")` with a static string | the patch binding |
-| `cmd` is dynamic (identifier, shorthand, concatenation, template with `${}`), or the object has a spread or computed key | a `process.unresolved` action; nothing is guessed |
-| `workdir` is present but dynamic (shorthand, identifier, template with `${}`, concatenation) | the command is analyzed with an unknown working directory |
-| objects not passed directly as the first argument (`const steps = [{cmd: ...}]`, `{opts: {cmd: ...}}`, `exec_command(variable)`), `write_stdin`, `wait`, MCP calls, other JavaScript | ignored |
+| `exec_command({...})` whose argument is an object literal with a static `cmd` (string, or template literal without substitutions; JS escapes decoded; quoted, bare or escaped keys) | the shell analysis of `cmd` in `workdir` |
+| `shell({command: [...], workdir})` with a static string array (`bash -lc script` runs the script; other argv are single-quoted words) | as for `shell` |
+| `apply_patch("...")` with a static string | the patch binding |
+| `cmd` is dynamic (identifier, shorthand, concatenation, template with `${}`), the object repeats `cmd` or `workdir`, or has a spread or computed key | a `process.unresolved` action on an unknown node; nothing is guessed |
+| the argument is not an object literal (`exec_command(s)`, `exec_command(c ? {...} : {...})`, a spread), or `apply_patch` gets a computed patch | `process.unresolved` (an unknown `native.patch` for `apply_patch`) |
+| `workdir` is present but dynamic (shorthand, identifier, template with `${}`, concatenation) or an empty string | the command is analyzed with an unknown working directory |
+| objects that are not the argument of such a call (`const steps = [{cmd: ...}]`, `{opts: {cmd: ...}}`), `write_stdin`, `wait`, MCP calls, other JavaScript | ignored |
 
-A derived `command` field stored next to `input` is ignored. A program whose
-brackets do not pair up gets a `syntax_error` warning (the calls found before
-the damage are still analyzed); a program with no recognized call gets an
-`unsupported` info diagnostic; more than 256 commands in one program are
-capped with a `limit_reached` warning. The scan is bounded to a step budget
-linear in the program size. Evidence spans of the nested shell text point at
-the command's string literal in the program when the input is text, and at
-the whole input when it is JSON (the decoded program does not map byte for
-byte).
+Control flow is not modeled. A call that is inside any block (`{ ... }`
+other than an object literal), after `&&`, `||`, `??` or `?`, or the
+unbraced body of `if`/`else` is `conditional`; one in a `for` or `while` body
+is `repeated`; one in a function or arrow body is `latent` (defined, not
+known to be called). The result carries an info diagnostic saying so. Calls
+at the top level, in `await`, `text(...)` or `Promise.all([...])`, and in
+object literals and template substitutions are `always`. Statement ends are
+`;`, `,` and closing brackets; automatic semicolon insertion is not modeled,
+so a call after an unbraced `if` body that has no semicolon counts as
+conditional.
+
+A derived `command` field stored next to `input` is ignored. When the
+program cannot be read completely the result is partial: unbalanced brackets
+(`syntax_error`), more than 256 calls, template literals nested deeper than
+32, or an exhausted scan budget (`limit_reached`). A program with no
+recognized call gets an `unsupported` info diagnostic. The scan is bounded
+to a step budget linear in the program size. Evidence spans of the nested
+shell text point at the command's string literal in the program when the
+input is text, and at the whole input when it is JSON (the decoded program
+does not map byte for byte).
 
 Provider tool calls carry the provider as namespace (`openai`, `anthropic`,
 `gemini`). Bindings are registered per harness namespace, so the caller states

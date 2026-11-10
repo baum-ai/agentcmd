@@ -1,12 +1,13 @@
 {
   "schema_version": "1.0.0",
-  "id": "an_56aded545f226dde4a79531b",
+  "id": "an_296a0f5b6cd53ee3b31ef3fc",
   "invocation": "x",
   "versions": {
-    "analyzer": "1.0.0",
-    "ruleset": "9695ac7542c7d821/b27c67020f7a26b3",
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/c771eedde3b08980",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },
+  "partial": true,
   "nodes": [
     {
       "id": "n1",
@@ -33,7 +34,7 @@
         "end": 36
       },
       "reachability": "always",
-      "syntax": "parsed",
+      "syntax": "partial",
       "detail": "exec",
       "native": {
         "namespace": "harness",
@@ -54,72 +55,14 @@
     {
       "id": "n3",
       "parent": "n2",
-      "kind": "shell",
+      "kind": "unknown",
       "span": {
-        "source": "s1",
-        "start": 0,
-        "end": 9
+        "source": "s0",
+        "start": 19,
+        "end": 20
       },
       "reachability": "always",
-      "syntax": "parsed",
-      "detail": "bash",
-      "context": {
-        "cwd": {
-          "knowledge": "literal",
-          "text": "/w"
-        },
-        "namespace": {
-          "kind": "host"
-        }
-      }
-    },
-    {
-      "id": "n4",
-      "parent": "n3",
-      "kind": "command",
-      "span": {
-        "source": "s1",
-        "start": 0,
-        "end": 9
-      },
-      "reachability": "always",
-      "syntax": "parsed",
-      "command": {
-        "executable": {
-          "knowledge": "literal",
-          "text": "git",
-          "span": {
-            "source": "s1",
-            "start": 0,
-            "end": 3
-          }
-        },
-        "args": [
-          {
-            "knowledge": "literal",
-            "text": "add",
-            "span": {
-              "source": "s1",
-              "start": 4,
-              "end": 7
-            }
-          },
-          {
-            "knowledge": "literal",
-            "text": "a",
-            "span": {
-              "source": "s1",
-              "start": 8,
-              "end": 9
-            }
-          }
-        ],
-        "assumptions": [
-          "\"git\" denotes the standard executable",
-          "git aliases, hooks and configuration are not modeled"
-        ],
-        "rule": "std/git@1"
-      },
+      "detail": "unterminated argument of the code-mode exec_command call",
       "context": {
         "cwd": {
           "knowledge": "literal",
@@ -134,47 +77,29 @@
   "actions": [
     {
       "id": "a1",
-      "node": "n4",
-      "kind": "git.stage",
-      "resources": [
-        {
-          "role": "repository",
-          "expression": ".",
-          "resolved": "/w",
-          "knowledge": "literal",
-          "namespace": {
-            "kind": "host"
-          }
-        },
-        {
-          "role": "pathspec",
-          "expression": "a",
-          "resolved": "/w/a",
-          "knowledge": "literal",
-          "namespace": {
-            "kind": "host"
-          },
-          "span": {
-            "source": "s1",
-            "start": 8,
-            "end": 9
-          }
-        }
-      ],
+      "node": "n3",
+      "kind": "process.unresolved",
       "evidence": {
         "basis": "syntax",
-        "rule": "std/git",
+        "rule": "std/codex/exec",
         "rule_version": "1",
+        "assumptions": [
+          "the program is not executed; its values and control flow are not modeled"
+        ],
         "spans": [
           {
-            "source": "s1",
-            "start": 0,
-            "end": 9
+            "source": "s0",
+            "start": 19,
+            "end": 20
           }
         ]
       },
-      "git": {
-        "subcommand": "add"
+      "process": {
+        "executable": {
+          "knowledge": "unknown"
+        },
+        "shell": true,
+        "reason": "unterminated argument of the code-mode exec_command call"
       }
     }
   ],
@@ -184,24 +109,6 @@
       "kind": "text",
       "length": 36,
       "text": "tools.exec_command({cmd: \"git add a\""
-    },
-    {
-      "id": "s1",
-      "kind": "shell",
-      "length": 9,
-      "text": "git add a",
-      "derived": {
-        "from": "s0",
-        "exact": false,
-        "segments": [
-          {
-            "start": 0,
-            "end": 9,
-            "from_start": 25,
-            "from_end": 36
-          }
-        ]
-      }
     }
   ],
   "diagnostics": [
@@ -210,6 +117,17 @@
       "severity": "warning",
       "message": "code-mode program does not parse as JavaScript (unbalanced brackets); only the calls found by the lexical scan are analyzed",
       "node": "n2"
+    },
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "unterminated argument of the code-mode exec_command call",
+      "node": "n3",
+      "span": {
+        "source": "s0",
+        "start": 19,
+        "end": 20
+      }
     }
   ]
 }

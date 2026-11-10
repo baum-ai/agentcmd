@@ -52,11 +52,24 @@ func (c Context) NodeContext() model.NodeContext {
 type ProgramFunc func(b *Builder, parent string, p rules.Program, ctx Context) bool
 
 // Frontend is an optional embedded-language analyzer supplied by the caller
-// (see package languages). Runtime names the parser runtime for results.
+// (see package languages). It is opaque: only this module can build or open
+// one, so the representation can change without breaking callers.
 type Frontend struct {
-	Runtime string
-	Program ProgramFunc
+	runtime string
+	program ProgramFunc
 }
+
+// NewFrontend builds a Frontend; runtime names the parser runtime recorded in
+// results.
+func NewFrontend(runtime string, program ProgramFunc) Frontend {
+	return Frontend{runtime: runtime, program: program}
+}
+
+// FrontendRuntime is the parser runtime a Frontend records in results.
+func FrontendRuntime(f Frontend) string { return f.runtime }
+
+// FrontendProgram is the program hook of a Frontend, nil for the zero value.
+func FrontendProgram(f Frontend) ProgramFunc { return f.program }
 
 // LanguageKey normalizes an interpreter language name to the key the
 // engine's Languages switches use: "python", "javascript" or "".

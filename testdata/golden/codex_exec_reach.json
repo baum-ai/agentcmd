@@ -1,0 +1,457 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_cf6b40593d6e56f4fdabcbab",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/c771eedde3b08980",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 229
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 16
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 16
+      },
+      "reachability": "conditional",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "commit",
+            "span": {
+              "source": "s1",
+              "start": 4,
+              "end": 10
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "-am",
+            "span": {
+              "source": "s1",
+              "start": 11,
+              "end": 14
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "x",
+            "span": {
+              "source": "s1",
+              "start": 15,
+              "end": 16
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s2",
+        "start": 0,
+        "end": 16
+      },
+      "reachability": "latent",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n5",
+      "kind": "command",
+      "span": {
+        "source": "s2",
+        "start": 0,
+        "end": 16
+      },
+      "reachability": "latent",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s2",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "reset",
+            "span": {
+              "source": "s2",
+              "start": 4,
+              "end": 9
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "--hard",
+            "span": {
+              "source": "s2",
+              "start": 10,
+              "end": 16
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n7",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s3",
+        "start": 0,
+        "end": 10
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n8",
+      "parent": "n7",
+      "kind": "command",
+      "span": {
+        "source": "s3",
+        "start": 0,
+        "end": 10
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s3",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "status",
+            "span": {
+              "source": "s3",
+              "start": 4,
+              "end": 10
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n4",
+      "kind": "git.commit",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/wt",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 0,
+            "end": 16
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "commit"
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n6",
+      "kind": "git.reset",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/w",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s2",
+            "start": 0,
+            "end": 16
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "reset"
+      }
+    },
+    {
+      "id": "a3",
+      "node": "n8",
+      "kind": "git.inspect",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/wt",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s3",
+            "start": 0,
+            "end": 10
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "status"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 229,
+      "text": "if (changed) { await tools.exec_command({cmd: \"git commit -am x\", workdir: \"/wt\"}) }\nasync function cleanup() { await tools.exec_command({cmd: \"git reset --hard\"}) }\nawait tools.exec_command({cmd: \"git status\", workdir: \"/wt\"});\n"
+    },
+    {
+      "id": "s1",
+      "kind": "shell",
+      "length": 16,
+      "text": "git commit -am x",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 16,
+            "from_start": 46,
+            "from_end": 64
+          }
+        ]
+      }
+    },
+    {
+      "id": "s2",
+      "kind": "shell",
+      "length": 16,
+      "text": "git reset --hard",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 16,
+            "from_start": 143,
+            "from_end": 161
+          }
+        ]
+      }
+    },
+    {
+      "id": "s3",
+      "kind": "shell",
+      "length": 10,
+      "text": "git status",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 10,
+            "from_start": 197,
+            "from_end": 209
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported",
+      "severity": "info",
+      "message": "JavaScript control flow is not modeled: calls inside blocks, after \u0026\u0026, || or ?, in loops or in function bodies are marked conditional, repeated or latent, not known to run",
+      "node": "n2"
+    }
+  ]
+}

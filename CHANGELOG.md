@@ -2,32 +2,50 @@
 
 ## Unreleased
 
-- Embedded Python and JavaScript analysis is opt-in: the frontends moved from
-  `internal/languages` to the public package `languages`, selected with
-  `Config.Frontend` (`languages.Frontend()`). The root package, rules, native
-  bindings, adapters and streams no longer link gotreesitter (a shell-only
-  consumer is about 2 MB larger than an empty program instead of tens of MB).
-  Without a Frontend, Python and JavaScript programs are reported as
-  unsupported. The reference CLI opts in; its behaviour is unchanged.
-- Codex `exec_command` now honours `workdir`: the command is analyzed in that
-  directory (a relative one resolves against the invocation's directory; a
-  non-string one makes it unknown).
-- New native binding `std/codex/exec` for Codex code mode: a dependency-free
-  lexical scan of the JavaScript program finds `tools.exec_command({cmd,
-  workdir})` calls (and `tools.shell`, static `apply_patch`) and analyzes each
-  as a nested shell invocation with its own directory; dynamic commands are
-  `process.unresolved` and dynamic directories unknown. See
-  `docs/ingestion.md`. `native.Result.Shells` and the `Workdir`,
-  `WorkdirUnknown` and `Span` fields of `native.ShellSource` carry this.
-- A native node's span now covers the whole input (it used to end at byte 1);
-  analysis IDs and golden files change because the binding set changed.
+Analyzer version 1.1.0. The JSON schema (`model.SchemaVersion`) is unchanged
+at 1.0.0: no field or action kind was added or removed, so
+`docs/versioning.md` requires no schema bump. Analysis IDs change, as they
+do whenever the analyzer version or a ruleset changes.
 
-- Module path is now `github.com/baum-ai/agentcmd` (was the former organisation).
+- Module path is now `github.com/baum-ai/agentcmd` (the repository moved
+  organisations); the License holder is Baum AI Ltd.
 - The flat-records projection package is now `projection/records` (it was
   named after a single consumer); the record shape is unchanged.
 - The `go` directive is lowered to 1.26, the real minimum (`mvdan.cc/sh/v3`
   v3.14.1 requires it).
-- License holder is now Baum AI Ltd.
+- Embedded Python and JavaScript analysis is opt-in: the frontends moved from
+  `internal/languages` to the public package `languages`, selected with
+  `Config.Frontend` (`languages.Frontend()`). The root package, rules, native
+  bindings, adapters and streams no longer link gotreesitter. Without a
+  Frontend, Python and JavaScript programs are reported as unsupported
+  ("requires a language frontend") and the result is partial. The reference
+  CLI opts in; its behaviour is unchanged. `Frontend` is opaque: only
+  `languages.Frontend()` builds one. A build that excludes a grammar (the
+  `grammar_subset` tags) now yields a diagnostic and a partial result instead
+  of a panic.
+- Codex `exec_command` honours `workdir` (binding `std/codex/exec_command`
+  version 2): the command is analyzed in that directory. A relative one
+  resolves against the invocation's directory and is unknown when that is
+  unknown; a non-string or empty one makes it unknown.
+- The Codex `shell` binding resolves a relative `workdir` the same way
+  instead of reporting resources as resolved against an unknown directory.
+- New native binding `std/codex/exec` for Codex code mode: a dependency-free
+  lexical scan of the JavaScript program finds `tools.exec_command({cmd,
+  workdir})` calls (also `tools.shell`, and `apply_patch`) and analyzes each
+  as a nested shell invocation with its own directory. Calls inside blocks,
+  after `&&`, `||`, `??` or `?`, in loops or in function bodies are marked
+  conditional, repeated or latent. A computed call, a repeated key, a spread
+  or computed key is `process.unresolved` and the result is partial; a
+  dynamic `workdir` is an unknown directory. See `docs/ingestion.md`.
+  `native.Result.Shells`, `native.Result.Parts` and the `Workdir`,
+  `WorkdirUnknown`, `Span` and `Reach` fields of `native.ShellSource` carry
+  this.
+- A binding that reports a `limit_reached` or `syntax_error` diagnostic now
+  makes the analysis partial (ADR 0007).
+- `git -C` composes several options in order and resolves the command's
+  operands against the directory it names (rule `std/git` version 2).
+- A native node's span now covers the whole input (it used to end at byte 1,
+  and was invalid for an empty input).
 
 ## 1.0.0 — 2026-09-17
 

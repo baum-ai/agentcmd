@@ -340,7 +340,7 @@ func TestLanguagesNeedFrontend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !a.Partial || !hasDiag(a, model.DiagUnsupported, "python analysis is not enabled") || !hasDiag(a, model.DiagUnsupported, "javascript analysis is not enabled") {
+	if !a.Partial || !hasDiag(a, model.DiagUnsupported, "python analysis requires a language frontend") || !hasDiag(a, model.DiagUnsupported, "javascript analysis requires a language frontend") {
 		t.Fatalf("%v", a.Diagnostics)
 	}
 	if len(actionsOf(a, model.FSDelete)) != 0 || a.Versions.LanguageRuntime != "" {

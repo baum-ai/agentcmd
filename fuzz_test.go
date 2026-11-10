@@ -128,6 +128,8 @@ func FuzzCodexExec(f *testing.F) {
 		realProgram, `tools.exec_command({cmd: "git add a", workdir})`, "tools.exec_command({cmd: `a${b}`})", `tools.exec_command({...o})`,
 		`tools.exec_command({["cmd"]: "x"}`, `await Promise.all([tools.exec_command({cmd:"ls",workdir:"/a"})])`, `tools.shell({command:["bash","-lc","ls"]})`,
 		`tools.apply_patch("*** Begin Patch\n*** End Patch")`, "/* \"", "`${", `"\u{`, `exec_command({exec_command({`,
+		"if (a) /\"/.test(s); tools.exec_command({cmd: 'ls'})", "i++ / 2; `${/* } */ tools.exec_command({cmd:'ls'})}`", `function exec_command({cmd}) {} x => tools.shell(x)`,
+		`for (;;) { ok && tools.exec_command({cmd:"ls", cmd:"pwd"}) }`, `tools.exec_command({\u0063md: "ls"})`,
 	} {
 		f.Add(s)
 	}

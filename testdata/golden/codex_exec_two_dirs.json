@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0.0",
-  "id": "an_41aa3aed3ff691dfd9d60717",
+  "id": "an_95d1012948589b6bb764234a",
   "invocation": "x",
   "versions": {
-    "analyzer": "1.0.0",
-    "ruleset": "9695ac7542c7d821/b27c67020f7a26b3",
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/c771eedde3b08980",
     "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
   },
   "nodes": [
@@ -192,7 +192,7 @@
           "\"git\" denotes the standard executable",
           "git aliases, hooks and configuration are not modeled"
         ],
-        "rule": "std/git@1"
+        "rule": "std/git@2"
       },
       "context": {
         "cwd": {
@@ -274,7 +274,7 @@
           "\"git\" denotes the standard executable",
           "git aliases, hooks and configuration are not modeled"
         ],
-        "rule": "std/git@1"
+        "rule": "std/git@2"
       },
       "context": {
         "cwd": {
@@ -320,7 +320,7 @@
       "evidence": {
         "basis": "syntax",
         "rule": "std/git",
-        "rule_version": "1",
+        "rule_version": "2",
         "spans": [
           {
             "source": "s1",
@@ -365,7 +365,7 @@
       "evidence": {
         "basis": "syntax",
         "rule": "std/git",
-        "rule_version": "1",
+        "rule_version": "2",
         "spans": [
           {
             "source": "s2",

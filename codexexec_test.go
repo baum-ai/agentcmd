@@ -170,7 +170,6 @@ func TestCodexExecDynamicInputs(t *testing.T) {
 func TestCodexExecIgnoresOtherObjects(t *testing.T) {
 	prog := `const steps = [{cmd: "git commit -m x", workdir: "/a"}];
 const nested = foo({opts: {cmd: "git add y"}});
-for (const s of steps) { await tools.exec_command(s); }
 const re = /cmd: "git add z"/;
 // tools.exec_command({cmd: "git add commented"})
 const str = 'tools.exec_command({cmd: "git add quoted"})';
@@ -190,7 +189,8 @@ func TestCodexExecApplyPatchAndShell(t *testing.T) {
 		"await tools.shell({command: [\"bash\", \"-lc\", \"git add q\"], workdir: \"/s2\"});\n" +
 		"await apply_patch(patchText);\n"
 	a := runExec(t, prog, model.InputText, "/w")
-	if len(actionsOf(a, model.NativePatch)) != 1 || len(actionsOf(a, model.FSWrite)) != 1 {
+	// The computed patch is reported as an unknown patch, not dropped.
+	if len(actionsOf(a, model.NativePatch)) != 2 || len(actionsOf(a, model.FSWrite)) != 1 || !a.Partial {
 		t.Fatalf("%s", describeActions(a))
 	}
 	eq(t, gitDirs(a), "git.stage@/s", "git.stage@/s2")
@@ -257,10 +257,12 @@ func TestCodexExecBounds(t *testing.T) {
 
 func TestCodexExecGolden(t *testing.T) {
 	cases := map[string]string{
-		"codex_exec_commit":    realProgram,
-		"codex_exec_two_dirs":  "await Promise.all([tools.exec_command({cmd: \"cd sub && git add x\", workdir: \"/one\"}), tools.exec_command({cmd: \"git add y\", workdir: \"/two\"})]);",
-		"codex_exec_dynamic":   "tools.exec_command({cmd: \"git add a\", workdir});\ntools.exec_command({cmd: run});\n",
-		"codex_exec_malformed": "tools.exec_command({cmd: \"git add a\"",
+		"codex_exec_commit":     realProgram,
+		"codex_exec_two_dirs":   "await Promise.all([tools.exec_command({cmd: \"cd sub && git add x\", workdir: \"/one\"}), tools.exec_command({cmd: \"git add y\", workdir: \"/two\"})]);",
+		"codex_exec_dynamic":    "tools.exec_command({cmd: \"git add a\", workdir});\ntools.exec_command({cmd: run});\n",
+		"codex_exec_reach":      "if (changed) { await tools.exec_command({cmd: \"git commit -am x\", workdir: \"/wt\"}) }\nasync function cleanup() { await tools.exec_command({cmd: \"git reset --hard\"}) }\nawait tools.exec_command({cmd: \"git status\", workdir: \"/wt\"});\n",
+		"codex_exec_unresolved": "for (const s of steps) await tools.exec_command(s);\ntools.exec_command({cmd: \"git status\", cmd: \"git commit -m x\"});\ntools.apply_patch(`${body}`);\n",
+		"codex_exec_malformed":  "tools.exec_command({cmd: \"git add a\"",
 	}
 	e := engine(t)
 	for name, prog := range cases {
@@ -284,5 +286,319 @@ func TestCodexExecGolden(t *testing.T) {
 				t.Errorf("golden mismatch for %s; run go test -update", name)
 			}
 		})
+	}
+}
+
+func reachOfGit(a model.Analysis, kind model.ActionKind) []model.Reachability {
+	var out []model.Reachability
+	for _, act := range actionsOf(a, kind) {
+		for _, n := range a.Nodes {
+			if n.ID == act.Node {
+				out = append(out, n.Reach)
+			}
+		}
+	}
+	return out
+}
+
+func TestCodexExecReachability(t *testing.T) {
+	cases := []struct {
+		name, prog string
+		kind       model.ActionKind
+		want       model.Reachability
+	}{
+		{"top level", `tools.exec_command({cmd: "git commit -m x"});`, model.GitCommit, model.ReachAlways},
+		{"promise.all", `await Promise.allSettled([tools.exec_command({cmd: "git commit -m x"}), tools.exec_command({cmd: "git add y"})]);`, model.GitCommit, model.ReachAlways},
+		{"text wrapper", `text(await tools.exec_command({cmd: "git commit -m x"}));`, model.GitCommit, model.ReachAlways},
+		{"if block", `if (r.output.trim()) { await tools.exec_command({cmd: "git commit -am x"}) }`, model.GitCommit, model.ReachConditional},
+		{"if without braces", `if (ok) await tools.exec_command({cmd: "git commit -am x"});`, model.GitCommit, model.ReachConditional},
+		{"else block", `if (ok) { a() } else { await tools.exec_command({cmd: "git commit -am x"}) }`, model.GitCommit, model.ReachConditional},
+		{"and", `ok && await tools.exec_command({cmd: "git commit -am x"});`, model.GitCommit, model.ReachConditional},
+		{"or", `ok || await tools.exec_command({cmd: "git commit -am x"});`, model.GitCommit, model.ReachConditional},
+		{"nullish", `ok ?? await tools.exec_command({cmd: "git commit -am x"});`, model.GitCommit, model.ReachConditional},
+		{"ternary", `ok ? await tools.exec_command({cmd: "git commit -am x"}) : 0;`, model.GitCommit, model.ReachConditional},
+		{"call before && is always", `await tools.exec_command({cmd: "git commit -m x"}) && ok;`, model.GitCommit, model.ReachAlways},
+		{"after the statement", "ok && f();\nawait tools.exec_command({cmd: \"git commit -m x\"});", model.GitCommit, model.ReachAlways},
+		{"for loop", `for (const f of files) { await tools.exec_command({cmd: "git commit -am x"}) }`, model.GitCommit, model.ReachRepeated},
+		{"while loop", `while (more) { await tools.exec_command({cmd: "git commit -am x"}) }`, model.GitCommit, model.ReachRepeated},
+		{"function declaration", `async function cleanup() { await tools.exec_command({cmd: "git reset --hard"}) }`, model.GitReset, model.ReachLatent},
+		{"arrow block", `const f = async () => { await tools.exec_command({cmd: "git reset --hard"}) };`, model.GitReset, model.ReachLatent},
+		{"arrow expression", `const f = () => tools.exec_command({cmd: "git reset --hard"});`, model.GitReset, model.ReachLatent},
+		{"map callback", `await Promise.all(xs.map(x => tools.exec_command({cmd: "git reset --hard"})));`, model.GitReset, model.ReachLatent},
+		{"try block", `try { await tools.exec_command({cmd: "git reset --hard"}) } catch (e) {}`, model.GitReset, model.ReachConditional},
+		{"object literal arg is transparent", `await run({a: await tools.exec_command({cmd: "git reset --hard"})});`, model.GitReset, model.ReachAlways},
+		{"template substitution", "text(`${await tools.exec_command({cmd: \"git reset --hard\"})}`);", model.GitReset, model.ReachAlways},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := runExec(t, c.prog, model.InputText, "/w")
+			got := reachOfGit(a, c.kind)
+			if len(got) == 0 || got[0] != c.want {
+				t.Fatalf("reach = %v, want %s\n%s", got, c.want, describeActions(a))
+			}
+			if c.want != model.ReachAlways && !hasDiag(a, model.DiagUnsupported, "control flow is not modeled") {
+				t.Fatal("missing control-flow assumption")
+			}
+		})
+	}
+	// An unresolved call is attributed the same way.
+	a := runExec(t, `if (ok) { await tools.exec_command({cmd}) }`, model.InputText, "/w")
+	n := 0
+	for _, node := range a.Nodes {
+		if node.Kind == model.NodeUnknown && node.Reach == model.ReachConditional {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Fatalf("unresolved call node reach: %+v", a.Nodes)
+	}
+}
+
+func TestCodexExecRegexAndDivision(t *testing.T) {
+	// A string after a regular expression that follows a condition must not
+	// swallow the real call, and a quoted call in a string must not count.
+	cases := map[string]struct {
+		prog string
+		want []string
+	}{
+		"regex after if":                 {"if (ok) /\"/.test(s);\nconst msg = \"say tools.exec_command({cmd: 'git push --force', workdir: '/prod'}) to run\";\n", nil},
+		"regex after if keeps real call": {"if (ok) /\"/.test(s);\nawait tools.exec_command({cmd: 'git add a', workdir: '/real'});\n", []string{"git.stage@/real"}},
+		"regex after while":              {"while (x) /'/.test(s);\nawait tools.exec_command({cmd: 'git add a', workdir: '/real'});\n", []string{"git.stage@/real"}},
+		"regex after for":                {"for (;;) /\"/.test(s);\nawait tools.exec_command({cmd: 'git add a', workdir: '/real'});\n", []string{"git.stage@/real"}},
+		"postfix then division":          {"let r = i++ / 2 + \"/\"; const m = \"tools.exec_command({cmd:'git push',workdir:'/prod'})\";\n", nil},
+		"postfix decrement":              {"let r = i-- / 2 + \"/\"; const m = \"tools.exec_command({cmd:'git push',workdir:'/prod'})\";\n", nil},
+		"paren division":                 {"const h = (a + b) / 2; const m = \"/\"; await tools.exec_command({cmd: 'git add a', workdir: '/real'});\n", []string{"git.stage@/real"}},
+		"regex statement start":          {"/'/.test(s);\nawait tools.exec_command({cmd: 'git add a', workdir: '/real'});\n", []string{"git.stage@/real"}},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, c.prog, model.InputText, "/w")
+			eq(t, gitDirs(a), c.want...)
+		})
+	}
+}
+
+func TestCodexExecDuplicateKeys(t *testing.T) {
+	for name, prog := range map[string]string{
+		"cmd":     `tools.exec_command({cmd: "git status", cmd: "git commit -m x", workdir: "/a"})`,
+		"workdir": `tools.exec_command({cmd: "git add a", workdir: "/a", workdir: "/b"})`,
+		"quoted":  `tools.exec_command({cmd: "git status", "cmd": "git commit -m x"})`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			u := actionsOf(a, model.ProcessUnresolved)
+			if len(u) != 1 || !strings.Contains(u[0].Process.Reason, "repeats a property") || len(gitDirs(a)) != 0 {
+				t.Fatalf("%s", describeActions(a))
+			}
+		})
+	}
+}
+
+func TestCodexExecPartialOnLimits(t *testing.T) {
+	var b strings.Builder
+	for i := 0; i < 300; i++ {
+		b.WriteString("tools.exec_command({cmd: \"git add a\", workdir: \"/x\"});\n")
+	}
+	a := runExec(t, b.String(), model.InputText, "/w")
+	if !a.Partial || !hasDiag(a, model.DiagLimitReached, "more than") {
+		t.Fatalf("partial=%v %v", a.Partial, a.Diagnostics)
+	}
+	a = runExec(t, `tools.exec_command({cmd: "git add a", workdir: "/x"}`, model.InputText, "/w")
+	if !a.Partial || !hasDiag(a, model.DiagSyntaxError, "unbalanced") {
+		t.Fatalf("partial=%v %v", a.Partial, a.Diagnostics)
+	}
+	for _, n := range a.Nodes {
+		if n.Kind == model.NodeNative && n.Syntax == model.SyntaxParsed {
+			t.Fatal("native node must not claim a clean parse")
+		}
+	}
+	// Exhausting the scan budget is reported, and nothing is called "not a
+	// static string" on the way.
+	a = runExec(t, strings.Repeat("exec_command({", 20000), model.InputText, "/w")
+	if !a.Partial {
+		t.Fatal("budget exhaustion must be partial")
+	}
+	// Template literals nested too deep.
+	a = runExec(t, strings.Repeat("`${", 100)+"tools.exec_command({cmd: 'git add a'})", model.InputText, "/w")
+	if !a.Partial || !hasDiag(a, model.DiagLimitReached, "nested deeper") {
+		t.Fatalf("%v", a.Diagnostics)
+	}
+}
+
+func TestCodexExecNonLiteralArguments(t *testing.T) {
+	cases := map[string]string{
+		"loop variable":     "for (const s of steps) await tools.exec_command(s);",
+		"ternary arg":       `tools.exec_command(c ? {cmd: "git add a"} : {cmd: "git add b"})`,
+		"spread arg":        `tools.exec_command(...args)`,
+		"object expression": `tools.exec_command({cmd: "git add a"} || other)`,
+		"bare call":         `exec_command(opts)`,
+		"shell variable":    `tools.shell(spec)`,
+	}
+	for name, prog := range cases {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			if len(actionsOf(a, model.ProcessUnresolved)) != 1 || !a.Partial || len(gitDirs(a)) != 0 {
+				t.Fatalf("partial=%v %s", a.Partial, describeActions(a))
+			}
+		})
+	}
+	for name, prog := range map[string]string{
+		"template patch": "tools.apply_patch(`*** Begin Patch\n${body}\n*** End Patch`)",
+		"concatenation":  `tools.apply_patch("*** Begin Patch\n" + body)`,
+		"variable":       `apply_patch(text)`,
+	} {
+		t.Run("patch "+name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			p := actionsOf(a, model.NativePatch)
+			if len(p) != 1 || p[0].Native.Format != "unknown" || !a.Partial {
+				t.Fatalf("partial=%v %s", a.Partial, describeActions(a))
+			}
+		})
+	}
+}
+
+func TestCodexExecDefinitionsAreNotCalls(t *testing.T) {
+	for name, prog := range map[string]string{
+		"function":         `async function exec_command({cmd, workdir}) { return run(cmd); }`,
+		"anonymous":        `const f = function exec_command(opts) { return 1; };`,
+		"method":           `const o = { exec_command({cmd}) { return cmd; }, async apply_patch(p) {} };`,
+		"class method":     `class T { async shell(opts) { return 1; } }`,
+		"other object":     `await sandbox.exec_command({cmd: "git add a"}); await t.apply_patch("x"); await api.shell({command: ["git"]});`,
+		"no argument":      `await tools.exec_command();`,
+		"generator":        `function* exec_command(x) {}`,
+		"only a reference": `const f = tools.exec_command; const g = exec_command;`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			a := runExec(t, prog, model.InputText, "/w")
+			if len(a.Actions) != 0 || a.Partial && !hasDiag(a, model.DiagUnsupported, "nothing to analyze") {
+				t.Fatalf("partial=%v %s %v", a.Partial, describeActions(a), a.Diagnostics)
+			}
+			if len(actionsOf(a, model.ProcessUnresolved)) != 0 {
+				t.Fatalf("phantom unresolved action: %s", describeActions(a))
+			}
+		})
+	}
+}
+
+func TestCodexExecEscapedKeysAndTemplates(t *testing.T) {
+	// An identifier written with a unicode escape is the same key.
+	a := runExec(t, `tools.exec_command({\u0063md: "git add a", workdir: "/k"})`, model.InputText, "/w")
+	eq(t, gitDirs(a), "git.stage@/k")
+	// Calls inside template substitutions are seen, even after a comment
+	// holding a brace.
+	a = runExec(t, "text(`out: ${/* } */ await tools.exec_command({cmd: 'git add a', workdir: '/t'})}`);\ntools.exec_command({cmd: 'git add b', workdir: '/after'});", model.InputText, "/w")
+	eq(t, gitDirs(a), "git.stage@/t", "git.stage@/after")
+}
+
+func TestCodexExecEmptyWorkdirIsUnknown(t *testing.T) {
+	a := runExec(t, `tools.exec_command({cmd: "git add a", workdir: ""})`, model.InputText, "/w")
+	eq(t, gitDirs(a), "git.stage@")
+	a, err := engine(t).Analyze(context.Background(), nativeInv("c", "exec_command", `{"cmd":"git add a","workdir":""}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	eq(t, gitDirs(a), "git.stage@")
+}
+
+func TestCodexShellExecWorkdir(t *testing.T) {
+	e := engine(t)
+	run := func(args string, cwd string) model.Analysis {
+		inv := nativeInv("s", "shell", args)
+		if cwd == "" {
+			inv.Context.WorkingDir = model.Fact{}
+		}
+		a, err := e.Analyze(context.Background(), inv)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return a
+	}
+	// Relative workdir with an unknown base is not resolved.
+	a := run(`{"command":["git","add","a"],"workdir":"sub"}`, "")
+	if got := actionsOf(a, model.GitStage); len(got) != 1 || got[0].Resources[0].Resolved != "" || got[0].Resources[1].Resolved != "" {
+		t.Fatalf("%s", describeActions(a))
+	}
+	// Absolute workdir is cleaned.
+	a = run(`{"command":["git","add","a"],"workdir":"/abs/./wt/"}`, "")
+	eq(t, gitDirs(a), "git.stage@/abs/wt")
+	// Relative workdir with a known base resolves against it.
+	a = run(`{"command":["git","add","a"],"workdir":"sub"}`, "/w")
+	eq(t, gitDirs(a), "git.stage@/w/sub")
+	// The command's span covers the whole input.
+	for _, n := range a.Nodes {
+		if n.Kind == model.NodeCommand && n.Span.End != len(`{"command":["git","add","a"],"workdir":"sub"}`) {
+			t.Fatalf("exec command span = %+v", n.Span)
+		}
+	}
+}
+
+func TestNativeSpans(t *testing.T) {
+	e := engine(t)
+	raw := `{"cmd":"git add a","workdir":"/abs/wt"}`
+	a, err := e.Analyze(context.Background(), nativeInv("c", "exec_command", raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var native, shell *model.Node
+	for i := range a.Nodes {
+		switch a.Nodes[i].Kind {
+		case model.NodeNative:
+			native = &a.Nodes[i]
+		case model.NodeShell:
+			shell = &a.Nodes[i]
+		}
+	}
+	if native == nil || native.Span.End != len(raw) {
+		t.Fatalf("native node span = %+v, want end %d", native, len(raw))
+	}
+	if shell == nil || shell.Span == nil {
+		t.Fatal("no shell node")
+	}
+	// The shell text is carried inside a JSON string, so it maps onto the
+	// whole input.
+	var src *model.Source
+	for i := range a.Sources {
+		if a.Sources[i].ID == shell.Span.Source {
+			src = &a.Sources[i]
+		}
+	}
+	if src == nil || src.Derived == nil || src.Derived.From != "s0" || len(src.Derived.Segments) != 1 || src.Derived.Segments[0].FromEnd != len(raw) {
+		t.Fatalf("shell source derivation = %+v", src)
+	}
+	// Empty text input to a text-based native tool is valid.
+	if _, err := e.Analyze(context.Background(), model.Invocation{ID: "e", Tool: model.ToolIdentity{Namespace: "harness", Name: "bash"}, Input: model.Input{Kind: model.InputText}, Context: ctxWith("/w")}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGitDashC(t *testing.T) {
+	e := engine(t)
+	run := func(cmd string) model.Analysis {
+		a, err := e.AnalyzeShell(context.Background(), []byte(cmd), ctxWith("/a/b"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return a
+	}
+	a := run("git -C ../other add a")
+	st := actionsOf(a, model.GitStage)
+	if len(st) != 1 || st[0].Resources[0].Resolved != "/a/other" || st[0].Resources[0].Expression != "../other" || st[0].Resources[1].Resolved != "/a/other/a" {
+		t.Fatalf("%s", describeActions(a))
+	}
+	// Several -C compose in order, each relative to the previous one.
+	a = run("git -C x -C ../y add a")
+	st = actionsOf(a, model.GitStage)
+	if len(st) != 1 || st[0].Resources[0].Resolved != "/a/b/y" || st[0].Resources[1].Resolved != "/a/b/y/a" {
+		t.Fatalf("%s", describeActions(a))
+	}
+	// An absolute -C resets the base.
+	a = run("git -C x -C /abs add a")
+	if st = actionsOf(a, model.GitStage); len(st) != 1 || st[0].Resources[1].Resolved != "/abs/a" {
+		t.Fatalf("%s", describeActions(a))
+	}
+	// A non-literal -C makes the directory unknown.
+	a = run(`git -C "$D" add a`)
+	if st = actionsOf(a, model.GitStage); len(st) != 1 || st[0].Resources[1].Resolved != "" {
+		t.Fatalf("%s", describeActions(a))
 	}
 }

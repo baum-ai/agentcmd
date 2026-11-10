@@ -29,6 +29,28 @@ type ShellSource struct {
 	// taken from, for providers that carry shell text inside a larger
 	// program. Without it the text maps onto the whole input.
 	Span *model.SourceSpan
+	// Reach qualifies how surely the text runs when the invocation does;
+	// empty means always. A program that runs the text conditionally, in a
+	// loop or inside an uncalled function says so here.
+	Reach model.Reachability
+}
+
+// Part is a group of actions a binding attributes to one region of the
+// input, with its own reachability. The engine gives it a node of its own.
+type Part struct {
+	// Reach qualifies the part; empty means always.
+	Reach model.Reachability
+	// Span is the region of the root source (s0) the part comes from.
+	Span *model.SourceSpan
+	// Actions of the part. With Unresolved set and no actions the engine
+	// adds a process.unresolved action.
+	Actions []model.Action
+	// Unresolved, when set, says why the region could not be analyzed. The
+	// part becomes an unknown node, with a diagnostic, and the analysis is
+	// partial.
+	Unresolved string
+	// Assumptions are added to every action of the part.
+	Assumptions []string
 }
 
 // Exec asks the engine to analyze a literal argv without shell parsing.
@@ -47,7 +69,10 @@ type Result struct {
 	// own working directory and shell state (a call that runs several
 	// commands, such as a code-mode program). They follow Shell.
 	Shells []ShellSource
-	Exec   *Exec
+	// Parts are further regions with their own reachability: nested actions
+	// and unresolved calls of a program.
+	Parts []Part
+	Exec  *Exec
 	// Detail labels the native node (e.g. "read", "edit", "patch").
 	Detail      string
 	Assumptions []string

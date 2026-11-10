@@ -5,166 +5,400 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // This file holds a small dependency-free JavaScript scanner for Codex's
 // code-mode tool `exec`, whose input is a JavaScript program that calls
 // other tools: `tools.exec_command({cmd: "...", workdir: "..."})`. The scan
-// is lexical (no parse tree): it looks for object literals that are the
-// direct first argument of a known call. Nothing is evaluated.
+// is lexical (no parse tree): it finds calls of known tools and, when the
+// first argument is an object literal, reads its properties. Nothing is
+// evaluated. Control flow is not modeled; the nesting of a call (inside a
+// block, after `&&`, inside a function body) only qualifies its reachability.
 
 // maxCodexExecCalls bounds the commands taken from one program.
 const maxCodexExecCalls = 256
 
-// codexExecCall is one call found in a code-mode program.
-type codexExecCall struct {
-	// Callee is "exec_command" or "shell".
-	Callee string
-	// Command is the shell text; CommandStatic is false when it is built at
-	// run time, or when a spread or computed key could set it.
-	Command       string
-	CommandStatic bool
-	// Workdir is the literal directory; HasWorkdir says the object names
-	// one, WorkdirStatic that its value is a plain string literal.
-	Workdir                   string
-	HasWorkdir, WorkdirStatic bool
-	// Start and End delimit the argument object in the program source;
-	// CmdStart and CmdEnd the command's value (zero when there is none).
-	Start, End       int
-	CmdStart, CmdEnd int
-}
-
-// codexApplyPatch is an `apply_patch("...")` call with a static patch.
-type codexApplyPatch struct {
-	Patch      string
-	Start, End int
-}
+// maxTemplateDepth bounds nested template-literal substitutions.
+const maxTemplateDepth = 32
 
 // stepsPerToken bounds the work scanning a program does: the tokens of every
 // object scanned, together, may not exceed this multiple of the program's
 // tokens, so adversarial nesting stays linear.
 const stepsPerToken = 16
 
-// scanCodexExec returns the exec_command/shell calls and static apply_patch
-// calls of a code-mode program in source order. truncated is set when
-// maxCodexExecCalls was reached, unbalanced when the program's brackets do
-// not pair up (it is not valid JavaScript).
-func scanCodexExec(source string) (calls []codexExecCall, patches []codexApplyPatch, truncated, unbalanced bool) {
-	tokens := tokenize(source)
-	unbalanced = !balanced(tokens)
-	budget := stepsPerToken * len(tokens)
-	for i := 3; i < len(tokens) && budget > 0; i++ {
-		if !tokens[i-1].isPunct("(") || tokens[i-2].kind != tokIdent {
-			continue
-		}
-		callee := tokens[i-2].value
-		switch callee {
-		case "shell":
-			// Only the tools.shell form: a bare `shell(` is some local function.
-			if i < 4 || !tokens[i-3].isPunct(".") || tokens[i-4].kind != tokIdent || tokens[i-4].value != "tools" {
-				continue
-			}
-		case "exec_command":
-		case "apply_patch":
-			if tokens[i].kind == tokString && tokens[i].static && i+1 < len(tokens) && (tokens[i+1].isPunct(")") || tokens[i+1].isPunct(",")) {
-				patches = append(patches, codexApplyPatch{Patch: tokens[i].value, Start: tokens[i].start, End: tokens[i].end})
-			}
-			continue
-		default:
-			continue
-		}
-		if !tokens[i].isPunct("{") {
-			continue
-		}
-		if len(calls) >= maxCodexExecCalls {
-			return calls, patches, true, unbalanced
-		}
-		keys := "cmd"
-		if callee == "shell" {
-			keys = "command"
-		}
-		call := codexExecCall{Callee: callee, Start: tokens[i].start, End: tokens[i].end}
-		found, opaque := false, false
-		depth := 0
-	object:
-		for j := i + 1; j < len(tokens); j++ {
-			if budget--; budget <= 0 {
-				opaque = true
-				break
-			}
-			t := tokens[j]
-			atProperty := depth == 0 && (tokens[j-1].isPunct("{") || tokens[j-1].isPunct(","))
-			call.End = t.end
-			switch {
-			case t.kind == tokPunct && (t.text == "{" || t.text == "[" || t.text == "("):
-				if atProperty && t.text == "[" {
-					opaque = true // a computed key
-				}
-				depth++
-			case t.kind == tokPunct && (t.text == "}" || t.text == "]" || t.text == ")"):
-				if depth == 0 {
-					break object
-				}
-				depth--
-			case atProperty && t.isPunct("."):
-				opaque = true // a spread
-			case atProperty && t.isKey() && j+2 < len(tokens) && tokens[j+1].isPunct(":"):
-				switch t.value {
-				case keys:
-					if !found {
-						call.Command, call.CommandStatic = commandValue(tokens, j+2, callee == "shell")
-						call.CmdStart, call.CmdEnd = tokens[j+2].start, tokens[j+2].end
-						found = true
-					}
-				case "workdir":
-					call.HasWorkdir = true
-					value := tokens[j+2]
-					call.WorkdirStatic = value.kind == tokString && value.static && value.value != "" && endsValue(tokens, j+3)
-					if call.WorkdirStatic {
-						call.Workdir = value.value
-					}
-				}
-			case atProperty && t.kind == tokIdent && j+1 < len(tokens) && (tokens[j+1].isPunct(",") || tokens[j+1].isPunct("}")):
-				// Shorthand: the value is a variable.
-				switch t.value {
-				case keys:
-					if !found {
-						call.CommandStatic, found = false, true
-					}
-				case "workdir":
-					call.HasWorkdir, call.WorkdirStatic = true, false
-				}
-			}
-		}
-		if opaque {
-			call.CommandStatic = false
-		}
-		if found || opaque {
-			calls = append(calls, call)
-		}
-	}
-	return calls, patches, false, unbalanced
+// codexExecCall is one exec_command or shell call found in a program.
+type codexExecCall struct {
+	// Callee is "exec_command" or "shell".
+	Callee string
+	// Command is the shell text; CommandStatic is false when it is built at
+	// run time, or when a spread, computed or duplicate key could change it.
+	// Reason then says why.
+	Command       string
+	CommandStatic bool
+	Reason        string
+	// Workdir is the literal directory; HasWorkdir says the object names
+	// one, WorkdirStatic that its value is a non-empty string literal.
+	Workdir                   string
+	HasWorkdir, WorkdirStatic bool
+	// Start and End delimit the argument in the program source; CmdStart and
+	// CmdEnd the command's value (zero when there is none).
+	Start, End       int
+	CmdStart, CmdEnd int
+	Reach            model.Reachability
 }
 
-// balanced reports whether brackets pair up across the token stream.
-func balanced(tokens []token) bool {
-	var stack []string
-	for _, t := range tokens {
+// codexApplyPatch is an `apply_patch(...)` call.
+type codexApplyPatch struct {
+	// Patch is the text when Static; otherwise the argument is computed.
+	Patch      string
+	Static     bool
+	Start, End int
+	Reach      model.Reachability
+}
+
+// codexScan is the outcome of scanning one program.
+type codexScan struct {
+	calls   []codexExecCall
+	patches []codexApplyPatch
+	// truncated: more than maxCodexExecCalls calls. exhausted: the step
+	// budget ran out, so later calls were not examined. tooDeep: template
+	// literals nested beyond maxTemplateDepth. unbalanced: the brackets do
+	// not pair up (not valid JavaScript).
+	truncated, exhausted, tooDeep, unbalanced bool
+}
+
+// frame kinds of the nesting stack.
+const (
+	frParen    = iota // ( ... )
+	frBracket         // [ ... ]
+	frObject          // { ... } object literal
+	frBlock           // { ... } statement block
+	frLoop            // { ... } loop body
+	frFunc            // { ... } function or arrow body
+	frArrow           // expression body of an arrow function, up to , ; or a closer
+	frCond            // rest of an expression after && || ?? or ?
+	frStmt            // unbraced body of if/else, up to ;
+	frLoopStmt        // unbraced body of for/while, up to ;
+)
+
+type frame struct{ kind int }
+
+var reachByRank = [...]model.Reachability{model.ReachAlways, model.ReachConditional, model.ReachRepeated, model.ReachLatent}
+
+// reachOf is the weakest reachability of the frames on the stack.
+func reachOf(stack []frame) model.Reachability {
+	rank := 0
+	for _, f := range stack {
+		r := 0
+		switch f.kind {
+		case frBlock, frCond, frStmt:
+			r = 1
+		case frLoop, frLoopStmt:
+			r = 2
+		case frFunc, frArrow:
+			r = 3
+		}
+		if r > rank {
+			rank = r
+		}
+	}
+	return reachByRank[rank]
+}
+
+// scanCodexExec scans a code-mode program.
+func scanCodexExec(source string) codexScan {
+	lx := &lexer{src: source}
+	lx.run(0, false)
+	// A leading sentinel lets readers look back without bounds checks.
+	tokens := append([]token{{kind: tokPunct, text: ";"}}, lx.toks...)
+	var out codexScan
+	out.tooDeep = lx.tooDeep
+	match, ok := matchBrackets(tokens)
+	out.unbalanced = !ok
+	budget := stepsPerToken * len(tokens)
+	var stack []frame
+	for i := 1; i < len(tokens); i++ {
+		if budget <= 0 {
+			out.exhausted = true
+			break
+		}
+		budget--
+		if callee, isCall := callTarget(tokens, i, match); isCall {
+			if len(out.calls)+len(out.patches) >= maxCodexExecCalls {
+				out.truncated = true
+				break
+			}
+			reach := reachOf(stack)
+			if callee == "apply_patch" {
+				p := codexApplyPatch{Start: tokens[i].start, End: argEnd(tokens, i), Reach: reach}
+				if tokens[i].kind == tokString && tokens[i].static && i+1 < len(tokens) && (tokens[i+1].isPunct(")") || tokens[i+1].isPunct(",")) {
+					p.Static, p.Patch = true, tokens[i].value
+				}
+				out.patches = append(out.patches, p)
+			} else {
+				call, spent := scanObject(tokens, i, callee, match)
+				budget -= spent
+				call.Reach = reach
+				out.calls = append(out.calls, call)
+			}
+		}
+		stack = applyToken(stack, tokens, i)
+	}
+	return out
+}
+
+// callTarget reports whether tokens[i] starts the first argument of a call of
+// exec_command, shell or apply_patch, as `name(` or `tools.name(`. A function
+// or method definition with that name is not a call.
+func callTarget(tokens []token, i int, match []int) (string, bool) {
+	if i < 3 || !tokens[i-1].isPunct("(") || tokens[i-2].kind != tokIdent {
+		return "", false
+	}
+	name := tokens[i-2].value
+	if name != "exec_command" && name != "shell" && name != "apply_patch" {
+		return "", false
+	}
+	if tokens[i-3].isPunct(".") && (i < 4 || tokens[i-4].kind != tokIdent || tokens[i-4].value != "tools") {
+		return "", false // some other object's method
+	}
+	if tokens[i-3].kind == tokIdent && tokens[i-3].value == "function" || tokens[i-3].isOperator("*") && i >= 4 && tokens[i-4].value == "function" {
+		return "", false // function exec_command(...)
+	}
+	if tokens[i].isPunct(")") {
+		return "", false // no argument
+	}
+	if m := match[i-1]; m > 0 && m+1 < len(tokens) && tokens[m+1].isPunct("{") {
+		return "", false // method definition: name(...) { ... }
+	}
+	return name, true
+}
+
+var pairs = map[string]string{"(": ")", "[": "]", "{": "}"}
+
+// matchBrackets pairs every bracket with its partner (index, or -1) and
+// reports whether all of them pair up.
+func matchBrackets(tokens []token) ([]int, bool) {
+	match := make([]int, len(tokens))
+	for i := range match {
+		match[i] = -1
+	}
+	var stack []int
+	ok := true
+	for i, t := range tokens {
 		if t.kind != tokPunct {
 			continue
 		}
 		switch t.text {
 		case "(", "[", "{":
-			stack = append(stack, t.text)
+			stack = append(stack, i)
 		case ")", "]", "}":
-			want := map[string]string{")": "(", "]": "[", "}": "{"}[t.text]
-			if len(stack) == 0 || stack[len(stack)-1] != want {
-				return false
+			if len(stack) == 0 {
+				ok = false
+				continue
+			}
+			o := stack[len(stack)-1]
+			if pairs[tokens[o].text] != t.text {
+				ok = false
+				continue
 			}
 			stack = stack[:len(stack)-1]
+			match[o], match[i] = i, o
 		}
 	}
-	return len(stack) == 0
+	return match, ok && len(stack) == 0
+}
+
+// applyToken updates the nesting stack for tokens[i].
+func applyToken(stack []frame, tokens []token, i int) []frame {
+	t := tokens[i]
+	prev := tokens[i-1]
+	popExpr := func() {
+		for len(stack) > 0 {
+			switch stack[len(stack)-1].kind {
+			case frArrow, frCond, frStmt, frLoopStmt:
+				stack = stack[:len(stack)-1]
+				continue
+			}
+			break
+		}
+	}
+	switch {
+	case t.isPunct("("):
+		return append(stack, frame{frParen})
+	case t.isPunct("["):
+		return append(stack, frame{frBracket})
+	case t.isPunct("{"):
+		kind := frObject
+		switch {
+		case prev.isPunct(")") && prev.fn, prev.isOperator(">") && tokens[i-2].isOperator("="):
+			kind = frFunc
+		case prev.isPunct(")") && prev.loop, prev.kind == tokIdent && prev.value == "do":
+			kind = frLoop
+		case prev.isPunct(")"), prev.isPunct(";"), prev.isPunct("}"),
+			prev.kind == tokIdent && (prev.value == "else" || prev.value == "try" || prev.value == "finally"):
+			kind = frBlock
+		case prev.isPunct("{"):
+			if len(stack) > 0 && stack[len(stack)-1].kind != frObject {
+				kind = frBlock
+			}
+		case prev.kind == tokIdent && !regexKeywords[prev.value]:
+			kind = frBlock // class A { ... }
+		}
+		return append(stack, frame{kind})
+	case t.isPunct(")"), t.isPunct("]"), t.isPunct("}"):
+		popExpr()
+		if len(stack) > 0 {
+			stack = stack[:len(stack)-1]
+		}
+		// An unbraced statement body after if(...), for(...) or while(...).
+		if t.isPunct(")") && t.ctrl && i+1 < len(tokens) && !tokens[i+1].isPunct("{") && !tokens[i+1].isPunct(";") {
+			if t.loop {
+				return append(stack, frame{frLoopStmt})
+			}
+			return append(stack, frame{frStmt})
+		}
+		return stack
+	case t.isPunct(","), t.isPunct(";"):
+		popExpr()
+	case t.kind == tokIdent && t.value == "else" && i+1 < len(tokens) && !tokens[i+1].isPunct("{"):
+		return append(stack, frame{frStmt})
+	case t.isOperator(">") && prev.isOperator("="):
+		if i+1 < len(tokens) && !tokens[i+1].isPunct("{") {
+			return append(stack, frame{frArrow})
+		}
+	case t.isOperator("?"):
+		if i+1 < len(tokens) && tokens[i+1].isPunct(".") {
+			return stack // optional chaining
+		}
+		return append(stack, frame{frCond})
+	case t.isOperator("&") && prev.isOperator("&"), t.isOperator("|") && prev.isOperator("|"):
+		return append(stack, frame{frCond})
+	}
+	return stack
+}
+
+// scanObject reads the argument of an exec_command or shell call. It returns
+// the call and the number of tokens examined.
+func scanObject(tokens []token, i int, callee string, match []int) (codexExecCall, int) {
+	call := codexExecCall{Callee: callee, Start: tokens[i].start, End: tokens[i].end}
+	if !tokens[i].isPunct("{") {
+		call.Reason = "the argument of the code-mode " + callee + " call is not an object literal"
+		call.End = argEnd(tokens, i)
+		return call, 1
+	}
+	closeIdx := match[i]
+	if closeIdx < 0 {
+		call.Reason = "unterminated argument of the code-mode " + callee + " call"
+		return call, 1
+	}
+	call.End = tokens[closeIdx].end
+	if closeIdx+1 < len(tokens) && !tokens[closeIdx+1].isPunct(",") && !tokens[closeIdx+1].isPunct(")") {
+		call.Reason = "the argument of the code-mode " + callee + " call is an expression, not an object literal"
+		return call, 1
+	}
+	keys := "cmd"
+	if callee == "shell" {
+		keys = "command"
+	}
+	var seenCmd, seenDir, opaque, dup bool
+	depth := 0
+	steps := 0
+	for j := i + 1; j < closeIdx; j++ {
+		steps++
+		t := tokens[j]
+		atProperty := depth == 0 && (tokens[j-1].isPunct("{") || tokens[j-1].isPunct(","))
+		switch {
+		case t.isPunct("{"), t.isPunct("["), t.isPunct("("):
+			if atProperty && t.text == "[" {
+				opaque = true // a computed key
+			}
+			depth++
+		case t.isPunct("}"), t.isPunct("]"), t.isPunct(")"):
+			depth--
+		case atProperty && t.isPunct("."):
+			opaque = true // a spread
+		case atProperty && t.isKey() && j+2 < len(tokens) && tokens[j+1].isPunct(":"):
+			switch t.value {
+			case keys:
+				if seenCmd {
+					dup = true
+				}
+				seenCmd = true
+				if !dup {
+					call.Command, call.CommandStatic = commandValue(tokens, j+2, callee == "shell")
+					call.CmdStart, call.CmdEnd = tokens[j+2].start, tokens[j+2].end
+				}
+			case "workdir":
+				if seenDir {
+					dup = true
+				}
+				seenDir = true
+				call.HasWorkdir = true
+				value := tokens[j+2]
+				call.WorkdirStatic = value.kind == tokString && value.static && value.value != "" && endsValue(tokens, j+3)
+				call.Workdir = ""
+				if call.WorkdirStatic {
+					call.Workdir = value.value
+				}
+			}
+		case atProperty && t.kind == tokIdent && j+1 < len(tokens) && (tokens[j+1].isPunct(",") || tokens[j+1].isPunct("}")):
+			// Shorthand: the value is a variable.
+			switch t.value {
+			case keys:
+				if seenCmd {
+					dup = true
+				}
+				seenCmd = true
+				call.CommandStatic = false
+			case "workdir":
+				if seenDir {
+					dup = true
+				}
+				seenDir = true
+				call.HasWorkdir, call.WorkdirStatic = true, false
+			}
+		}
+	}
+	switch {
+	case dup:
+		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call repeats a property, so the last one wins at run time"
+	case opaque:
+		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call has a spread or computed key that may set the command"
+	case !seenCmd:
+		call.CommandStatic, call.Reason = false, "the object of the code-mode "+callee+" call has no static "+keys+" property"
+	case !call.CommandStatic:
+		call.Reason = "the " + keys + " of the code-mode " + callee + " call is not a static string"
+	}
+	return call, steps
+}
+
+// argEnd returns the end offset of the argument starting at tokens[i], up to
+// its closing `,` or `)` at the same depth (at most 64 tokens).
+func argEnd(tokens []token, i int) int {
+	depth := 0
+	end := tokens[i].end
+	for j := i; j < len(tokens) && j < i+64; j++ {
+		t := tokens[j]
+		if t.kind == tokPunct {
+			switch t.text {
+			case "(", "[", "{":
+				depth++
+			case ")", "]", "}":
+				if depth == 0 {
+					return end
+				}
+				depth--
+			case ",":
+				if depth == 0 {
+					return end
+				}
+			}
+		}
+		end = t.end
+	}
+	return end
 }
 
 // endsValue reports whether the property value that ended before tokens[i]
@@ -247,6 +481,10 @@ type token struct {
 	static bool
 	// start and end are the byte range of the token in the program source.
 	start, end int
+	// For a ")": ctrl closes the head of an if, while, for, with or switch (a
+	// regular expression may follow), loop the head of a for or while, fn a
+	// function parameter list.
+	ctrl, loop, fn bool
 }
 
 func (t token) isKey() bool {
@@ -262,75 +500,163 @@ var regexKeywords = map[string]bool{
 	"void": true, "throw": true, "new": true, "await": true, "yield": true, "else": true, "do": true,
 }
 
-// tokenize splits JavaScript source into identifiers, string literals,
-// regular expressions, punctuation and operators. Whitespace and comments are
-// dropped. A leading sentinel punctuation token lets a reader look one token
-// back without a bounds check. It is approximate (no automatic semicolons,
-// no template nesting beyond ${} skipping) and made to keep quotes inside
-// strings, comments and regular expressions from desynchronising the scan.
-func tokenize(source string) []token {
-	tokens := []token{{kind: tokPunct, text: ";"}}
-	for pos := 0; pos < len(source); {
-		c := source[pos]
-		before, startPos := len(tokens), pos
-		switch {
-		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
-			pos++
-		case c == '/' && pos+1 < len(source) && source[pos+1] == '/':
-			for pos < len(source) && source[pos] != '\n' {
-				pos++
-			}
-		case c == '/' && pos+1 < len(source) && source[pos+1] == '*':
-			end := strings.Index(source[pos+2:], "*/")
-			if end < 0 {
-				return tokens
-			}
-			pos += 2 + end + 2
-		case c == '"' || c == '\'' || c == '`':
-			value, static, next := scanString(source, pos)
-			tokens = append(tokens, token{kind: tokString, value: value, static: static})
-			pos = next
-		case c == '/' && regexAllowed(tokens[len(tokens)-1]):
-			if next, ok := scanRegex(source, pos); ok {
-				tokens = append(tokens, token{kind: tokRegex})
-				pos = next
-				break
-			}
-			tokens = append(tokens, token{kind: tokOperator, text: "/"})
-			pos++
-		case isIdentByte(c):
-			start := pos
-			for pos < len(source) && isIdentByte(source[pos]) {
-				pos++
-			}
-			word := source[start:pos]
-			tokens = append(tokens, token{kind: tokIdent, text: word, value: word, static: true})
-		case strings.IndexByte("{}[]():,;.", c) >= 0:
-			tokens = append(tokens, token{kind: tokPunct, text: string(c)})
-			pos++
-		default:
-			_, size := utf8.DecodeRuneInString(source[pos:])
-			tokens = append(tokens, token{kind: tokOperator, text: source[pos : pos+size]})
-			pos += size
-		}
-		if len(tokens) > before {
-			tokens[len(tokens)-1].start, tokens[len(tokens)-1].end = startPos, pos
-		}
-	}
-	return tokens
+// lexer splits JavaScript source into identifiers, string literals, regular
+// expressions, punctuation and operators. Whitespace and comments are
+// dropped. It is approximate (no automatic semicolons) and made to keep
+// quotes inside strings, comments and regular expressions from
+// desynchronising the scan. Template literal substitutions are lexed in
+// place, so calls inside them are seen.
+type lexer struct {
+	src     string
+	toks    []token
+	parens  []token // flags of the open parentheses
+	depth   int
+	tooDeep bool
 }
 
-// regexAllowed reports whether a slash after prev starts a regular expression.
-func regexAllowed(prev token) bool {
+// regexAllowed reports whether a slash after the tokens so far starts a
+// regular expression rather than dividing.
+func regexAllowed(toks []token) bool {
+	if len(toks) == 0 {
+		return true
+	}
+	prev := toks[len(toks)-1]
 	switch prev.kind {
 	case tokIdent:
 		return regexKeywords[prev.value]
 	case tokString, tokRegex:
 		return false
 	case tokPunct:
-		return prev.text != ")" && prev.text != "]"
+		switch prev.text {
+		case ")":
+			return prev.ctrl
+		case "]":
+			return false
+		}
+		return true
+	case tokOperator:
+		// A postfix ++ or -- ends an operand: the slash divides.
+		if (prev.text == "+" || prev.text == "-") && len(toks) >= 3 && toks[len(toks)-2].isOperator(prev.text) && operandEnd(toks[len(toks)-3]) {
+			return false
+		}
 	}
 	return true
+}
+
+// operandEnd reports whether t can end an operand.
+func operandEnd(t token) bool {
+	switch t.kind {
+	case tokIdent:
+		return !regexKeywords[t.value]
+	case tokString, tokRegex:
+		return true
+	case tokPunct:
+		return t.text == "]" || (t.text == ")" && !t.ctrl)
+	}
+	return false
+}
+
+// parenFlags classifies the parenthesis about to open after the tokens so far.
+func parenFlags(toks []token) token {
+	var open token
+	n := len(toks)
+	if n == 0 {
+		return open
+	}
+	prev := toks[n-1]
+	isFunction := func(k int) bool { return k >= 0 && toks[k].kind == tokIdent && toks[k].value == "function" }
+	switch {
+	case prev.kind == tokIdent && (prev.value == "if" || prev.value == "with" || prev.value == "switch"):
+		open.ctrl = true
+	case prev.kind == tokIdent && (prev.value == "while" || prev.value == "for"):
+		open.ctrl, open.loop = true, true
+	case prev.kind == tokIdent && prev.value == "await" && n > 1 && toks[n-2].kind == tokIdent && toks[n-2].value == "for":
+		open.ctrl, open.loop = true, true
+	case isFunction(n - 1), prev.kind == tokIdent && isFunction(n-2), prev.kind == tokIdent && n > 2 && toks[n-2].isOperator("*") && isFunction(n-3), prev.isOperator("*") && isFunction(n-2):
+		open.fn = true
+	}
+	return open
+}
+
+// run lexes from pos. In substitution mode it stops after the `}` that closes
+// the substitution and returns the position after it.
+func (l *lexer) run(pos int, subst bool) int {
+	src := l.src
+	braces := 0
+	for pos < len(src) {
+		c := src[pos]
+		switch {
+		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+			pos++
+		case c == '/' && pos+1 < len(src) && src[pos+1] == '/':
+			for pos < len(src) && src[pos] != '\n' {
+				pos++
+			}
+		case c == '/' && pos+1 < len(src) && src[pos+1] == '*':
+			end := strings.Index(src[pos+2:], "*/")
+			if end < 0 {
+				return len(src)
+			}
+			pos += 2 + end + 2
+		case c == '"' || c == '\'' || c == '`':
+			idx := len(l.toks)
+			l.toks = append(l.toks, token{kind: tokString, start: pos})
+			value, static, next := l.lexString(pos)
+			l.toks[idx].value, l.toks[idx].static, l.toks[idx].end = value, static, next
+			pos = next
+		case c == '/' && regexAllowed(l.toks):
+			if next, ok := scanRegex(src, pos); ok {
+				l.toks = append(l.toks, token{kind: tokRegex, start: pos, end: next})
+				pos = next
+				break
+			}
+			l.toks = append(l.toks, token{kind: tokOperator, text: "/", start: pos, end: pos + 1})
+			pos++
+		case isIdentByte(c) || (c == '\\' && pos+1 < len(src) && src[pos+1] == 'u'):
+			start := pos
+			var sb strings.Builder
+			for pos < len(src) {
+				if isIdentByte(src[pos]) {
+					sb.WriteByte(src[pos])
+					pos++
+				} else if src[pos] == '\\' && pos+1 < len(src) && src[pos+1] == 'u' {
+					pos = decodeEscape(src, pos, &sb)
+				} else {
+					break
+				}
+			}
+			word := sb.String()
+			l.toks = append(l.toks, token{kind: tokIdent, text: word, value: word, static: true, start: start, end: pos})
+		case strings.IndexByte("{}[]():,;.", c) >= 0:
+			if subst && c == '{' {
+				braces++
+			}
+			if subst && c == '}' {
+				if braces == 0 {
+					return pos + 1
+				}
+				braces--
+			}
+			t := token{kind: tokPunct, text: string(c), start: pos, end: pos + 1}
+			switch c {
+			case '(':
+				l.parens = append(l.parens, parenFlags(l.toks))
+			case ')':
+				if n := len(l.parens); n > 0 {
+					p := l.parens[n-1]
+					l.parens = l.parens[:n-1]
+					t.ctrl, t.loop, t.fn = p.ctrl, p.loop, p.fn
+				}
+			}
+			l.toks = append(l.toks, t)
+			pos++
+		default:
+			_, size := utf8.DecodeRuneInString(src[pos:])
+			l.toks = append(l.toks, token{kind: tokOperator, text: src[pos : pos+size], start: pos, end: pos + size})
+			pos += size
+		}
+	}
+	return pos
 }
 
 // maxRegexLength bounds the scan for a regular expression's close, so a long
@@ -370,10 +696,12 @@ func isIdentByte(c byte) bool {
 	return c == '_' || c == '$' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= 0x80
 }
 
-// scanString reads the string literal opening at source[pos] and returns its
+// lexString reads the string literal opening at source[pos] and returns its
 // decoded value, whether the value is fully static (a template literal with a
-// ${...} substitution is not), and the position after the closing quote.
-func scanString(source string, pos int) (string, bool, int) {
+// ${...} substitution is not), and the position after the closing quote. The
+// tokens of a substitution are appended to the token stream.
+func (l *lexer) lexString(pos int) (string, bool, int) {
+	source := l.src
 	quote := source[pos]
 	var out strings.Builder
 	static := true
@@ -387,33 +715,19 @@ func scanString(source string, pos int) (string, bool, int) {
 			i = decodeEscape(source, i, &out)
 		case quote == '`' && c == '$' && i+1 < len(source) && source[i+1] == '{':
 			static = false
-			i = skipSubstitution(source, i+2)
+			if l.depth >= maxTemplateDepth {
+				l.tooDeep = true
+				return out.String(), false, len(source)
+			}
+			l.depth++
+			i = l.run(i+2, true)
+			l.depth--
 		default:
 			out.WriteByte(c)
 			i++
 		}
 	}
 	return out.String(), false, len(source)
-}
-
-// skipSubstitution moves past a template literal's ${...} body, which may
-// itself hold braces and strings.
-func skipSubstitution(source string, i int) int {
-	depth := 1
-	for i < len(source) && depth > 0 {
-		switch source[i] {
-		case '{':
-			depth++
-		case '}':
-			depth--
-		case '"', '\'', '`':
-			_, _, next := scanString(source, i)
-			i = next
-			continue
-		}
-		i++
-	}
-	return i
 }
 
 // decodeEscape appends the character the JavaScript escape at source[i] (a

@@ -10,9 +10,17 @@ loss. Removing or renaming a field is a major bump.
 
 ## API
 
-The Go module follows semantic import versioning. `Config`, `Engine`,
+The Go module follows semantic versioning. The first public release is
+`v0.1.0`; before `v1.0.0` a minor version may change the Go API, and every
+such change is recorded in `CHANGELOG.md`. From `v1.0.0` on, breaking changes
+need a new major version (and import path suffix). `Config`, `Engine`,
 `model`, `rules`, `native`, `snapshot`, `stream`, `adapters`, `observe`,
 `render`, `languages` and `projection/*` are public. `internal/*` is not.
+
+The schema version (`model.SchemaVersion`) and the analyzer version
+(`agentcmd.Version`) are independent of the module version: the schema
+follows the rules above, and the analyzer version changes whenever analysis
+output can change.
 
 ## Analysis identity
 

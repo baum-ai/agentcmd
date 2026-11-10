@@ -79,6 +79,12 @@ func bindCodexExec(inv *model.Invocation) (native.Result, error) {
 		}
 		res.Shells = append(res.Shells, src)
 	}
+	for _, r := range scan.refs {
+		flow = flow || r.Reach != model.ReachAlways
+		res.Parts = append(res.Parts, native.Part{Reach: r.Reach, Span: span(r.Start, r.End),
+			Unresolved:  "the program refers to " + r.Name + " without calling it directly, so its calls are not followed",
+			Assumptions: []string{"the program is not executed; its values and control flow are not modeled"}})
+	}
 	for _, p := range scan.patches {
 		sp := span(p.Start, p.End)
 		flow = flow || p.Reach != model.ReachAlways
@@ -103,6 +109,10 @@ func bindCodexExec(inv *model.Invocation) (native.Result, error) {
 		res.Diagnostics = append(res.Diagnostics, model.Diagnostic{Code: model.DiagSyntaxError, Severity: model.SeverityWarning,
 			Message: "code-mode program does not parse as JavaScript (unbalanced brackets); only the calls found by the lexical scan are analyzed"})
 	}
+	if scan.unterminated {
+		res.Diagnostics = append(res.Diagnostics, model.Diagnostic{Code: model.DiagSyntaxError, Severity: model.SeverityWarning,
+			Message: "code-mode program has an unterminated string, template literal or comment; calls inside it are not known to run"})
+	}
 	if scan.exhausted {
 		res.Diagnostics = append(res.Diagnostics, model.Diagnostic{Code: model.DiagLimitReached, Severity: model.SeverityWarning,
 			Message: "code-mode program scan budget exhausted; calls after that point are not analyzed"})
@@ -115,7 +125,7 @@ func bindCodexExec(inv *model.Invocation) (native.Result, error) {
 		res.Diagnostics = append(res.Diagnostics, model.Diagnostic{Code: model.DiagLimitReached, Severity: model.SeverityWarning,
 			Message: fmt.Sprintf("code-mode program has more than %d calls; the rest are not analyzed", maxCodexExecCalls)})
 	}
-	if len(scan.calls) == 0 && len(scan.patches) == 0 {
+	if len(scan.calls) == 0 && len(scan.patches) == 0 && len(scan.refs) == 0 {
 		res.Diagnostics = append(res.Diagnostics, model.Diagnostic{Code: model.DiagUnsupported, Severity: model.SeverityInfo,
 			Message: "code-mode program calls neither exec_command, shell nor apply_patch; nothing to analyze"})
 	}

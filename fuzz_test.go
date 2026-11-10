@@ -130,6 +130,8 @@ func FuzzCodexExec(f *testing.F) {
 		`tools.apply_patch("*** Begin Patch\n*** End Patch")`, "/* \"", "`${", `"\u{`, `exec_command({exec_command({`,
 		"if (a) /\"/.test(s); tools.exec_command({cmd: 'ls'})", "i++ / 2; `${/* } */ tools.exec_command({cmd:'ls'})}`", `function exec_command({cmd}) {} x => tools.shell(x)`,
 		`for (;;) { ok && tools.exec_command({cmd:"ls", cmd:"pwd"}) }`, `tools.exec_command({\u0063md: "ls"})`,
+		"const f = x => x\ntools?.exec_command?.({cmd:'ls'})", "if (a) { b() } else if (c) { d() }\ntools.exec_command({cmd:'ls'})", "class A { async m() { tools.shell({command:['ls']}) } }",
+		"const r = tools.exec_command; tools[n](1); do tools.exec_command({cmd:'ls'}); while (x)", "text(`${", `tools.exec_command({get cmd() {}, __proto__: {}})`,
 	} {
 		f.Add(s)
 	}

@@ -58,15 +58,26 @@ type codexApplyPatch struct {
 	Reach      model.Reachability
 }
 
+// codexRef is a reference to a tool of the tools object that is not a direct
+// call (`const run = tools.exec_command`, `tools[name](...)`): the program may
+// call it in ways the scan does not follow.
+type codexRef struct {
+	Name       string
+	Start, End int
+	Reach      model.Reachability
+}
+
 // codexScan is the outcome of scanning one program.
 type codexScan struct {
 	calls   []codexExecCall
 	patches []codexApplyPatch
+	refs    []codexRef
 	// truncated: more than maxCodexExecCalls calls. exhausted: the step
 	// budget ran out, so later calls were not examined. tooDeep: template
 	// literals nested beyond maxTemplateDepth. unbalanced: the brackets do
-	// not pair up (not valid JavaScript).
-	truncated, exhausted, tooDeep, unbalanced bool
+	// not pair up (not valid JavaScript). unterminated: a string, template
+	// literal or comment runs to the end of the program.
+	truncated, exhausted, tooDeep, unbalanced, unterminated bool
 }
 
 // frame kinds of the nesting stack.
@@ -114,9 +125,10 @@ func scanCodexExec(source string) codexScan {
 	// A leading sentinel lets readers look back without bounds checks.
 	tokens := append([]token{{kind: tokPunct, text: ";"}}, lx.toks...)
 	var out codexScan
-	out.tooDeep = lx.tooDeep
+	out.tooDeep, out.unterminated = lx.tooDeep, lx.unterminated
 	match, ok := matchBrackets(tokens)
 	out.unbalanced = !ok
+	declared := declaredNames(tokens)
 	budget := stepsPerToken * len(tokens)
 	var stack []frame
 	for i := 1; i < len(tokens); i++ {
@@ -125,12 +137,29 @@ func scanCodexExec(source string) codexScan {
 			break
 		}
 		budget--
-		if callee, isCall := callTarget(tokens, i, match); isCall {
-			if len(out.calls)+len(out.patches) >= maxCodexExecCalls {
+		if endsStatementBefore(tokens, i) {
+			stack = popExpr(stack, true)
+		}
+		reachHere := func() model.Reachability {
+			r := reachOf(stack)
+			if r == model.ReachAlways && tokens[i].weak {
+				r = model.ReachConditional
+			}
+			return r
+		}
+		if name, end, ok := toolReference(tokens, i); ok {
+			if len(out.refs)+len(out.calls)+len(out.patches) >= maxCodexExecCalls {
 				out.truncated = true
 				break
 			}
-			reach := reachOf(stack)
+			out.refs = append(out.refs, codexRef{Name: name, Start: tokens[i].start, End: end, Reach: reachHere()})
+		}
+		if callee, isCall := callTarget(tokens, i, match, declared); isCall {
+			if len(out.refs)+len(out.calls)+len(out.patches) >= maxCodexExecCalls {
+				out.truncated = true
+				break
+			}
+			reach := reachHere()
 			if callee == "apply_patch" {
 				p := codexApplyPatch{Start: tokens[i].start, End: argEnd(tokens, i), Reach: reach}
 				if tokens[i].kind == tokString && tokens[i].static && i+1 < len(tokens) && (tokens[i+1].isPunct(")") || tokens[i+1].isPunct(",")) {
@@ -149,21 +178,37 @@ func scanCodexExec(source string) codexScan {
 	return out
 }
 
+// toolNames are the tools whose calls the scan reads.
+var toolNames = map[string]bool{"exec_command": true, "shell": true, "apply_patch": true}
+
 // callTarget reports whether tokens[i] starts the first argument of a call of
-// exec_command, shell or apply_patch, as `name(` or `tools.name(`. A function
-// or method definition with that name is not a call.
-func callTarget(tokens []token, i int, match []int) (string, bool) {
-	if i < 3 || !tokens[i-1].isPunct("(") || tokens[i-2].kind != tokIdent {
+// exec_command, shell or apply_patch: `name(`, `tools.name(`, `tools?.name(`
+// or `tools.name?.(`. A bare name the program declares itself, and a function
+// or method definition with that name, are not calls.
+func callTarget(tokens []token, i int, match []int, declared map[string]bool) (string, bool) {
+	if i < 3 || !tokens[i-1].isPunct("(") {
 		return "", false
 	}
-	name := tokens[i-2].value
-	if name != "exec_command" && name != "shell" && name != "apply_patch" {
+	n := i - 2
+	if n >= 3 && tokens[n].isPunct(".") && tokens[n-1].isOperator("?") {
+		n -= 2 // name?.(
+	}
+	if tokens[n].kind != tokIdent || !toolNames[tokens[n].value] {
 		return "", false
 	}
-	if tokens[i-3].isPunct(".") && (i < 4 || tokens[i-4].kind != tokIdent || tokens[i-4].value != "tools") {
-		return "", false // some other object's method
+	name := tokens[n].value
+	if tokens[n-1].isPunct(".") {
+		q := n - 2
+		if q >= 1 && tokens[q].isOperator("?") {
+			q--
+		}
+		if q < 1 || tokens[q].kind != tokIdent || tokens[q].value != "tools" {
+			return "", false // some other object's method
+		}
+	} else if declared[name] {
+		return "", false // the program defines its own function of that name
 	}
-	if tokens[i-3].kind == tokIdent && tokens[i-3].value == "function" || tokens[i-3].isOperator("*") && i >= 4 && tokens[i-4].value == "function" {
+	if tokens[n-1].kind == tokIdent && tokens[n-1].value == "function" || tokens[n-1].isOperator("*") && n >= 2 && tokens[n-2].value == "function" {
 		return "", false // function exec_command(...)
 	}
 	if tokens[i].isPunct(")") {
@@ -173,6 +218,85 @@ func callTarget(tokens []token, i int, match []int) (string, bool) {
 		return "", false // method definition: name(...) { ... }
 	}
 	return name, true
+}
+
+// toolReference reports a use of tools.exec_command, tools.shell,
+// tools.apply_patch or a computed tools[...] at tokens[i] that is not a
+// direct call. It returns a description and the end offset of the reference.
+func toolReference(tokens []token, i int) (string, int, bool) {
+	if tokens[i].kind != tokIdent || tokens[i].value != "tools" || tokens[i-1].isPunct(".") {
+		return "", 0, false
+	}
+	at := func(k int) token {
+		if k < len(tokens) {
+			return tokens[k]
+		}
+		return token{}
+	}
+	a := i + 1
+	if at(a).isOperator("?") && at(a+1).isPunct(".") {
+		a += 2
+	} else if at(a).isPunct(".") {
+		a++
+	} else if !at(a).isPunct("[") {
+		return "", 0, false
+	}
+	if at(a).isPunct("[") {
+		if at(a+1).kind == tokString && at(a+1).static && !toolNames[at(a+1).value] && at(a+2).isPunct("]") {
+			return "", 0, false // some other tool, by a literal name
+		}
+		return "tools[...]", tokens[min(a, len(tokens)-1)].end, true
+	}
+	if at(a).kind != tokIdent || !toolNames[at(a).value] {
+		return "", 0, false
+	}
+	if at(a+1).isPunct("(") || at(a+1).isOperator("?") && at(a+2).isPunct(".") && at(a+3).isPunct("(") {
+		return "", 0, false // a direct call
+	}
+	return "tools." + at(a).value, at(a).end, true
+}
+
+// declaredNames returns the tool names the program declares itself
+// (`function shell`, `class apply_patch`, `const exec_command = ...`), so a
+// bare call of them is the program's own function. `const exec_command =
+// tools.exec_command` is the tool itself.
+func declaredNames(tokens []token) map[string]bool {
+	out := map[string]bool{}
+	named := func(k int) (string, bool) {
+		if k < len(tokens) && tokens[k].kind == tokIdent && toolNames[tokens[k].value] {
+			return tokens[k].value, true
+		}
+		return "", false
+	}
+	for i := 1; i < len(tokens); i++ {
+		t := tokens[i]
+		if t.kind != tokIdent {
+			continue
+		}
+		switch t.value {
+		case "function":
+			j := i + 1
+			if j < len(tokens) && tokens[j].isOperator("*") {
+				j++
+			}
+			if n, ok := named(j); ok {
+				out[n] = true
+			}
+		case "class":
+			if n, ok := named(i + 1); ok {
+				out[n] = true
+			}
+		case "const", "let", "var":
+			if n, ok := named(i + 1); ok && i+2 < len(tokens) && tokens[i+2].isOperator("=") {
+				alias := i+6 < len(tokens) && tokens[i+3].kind == tokIdent && tokens[i+3].value == "tools" && tokens[i+4].isPunct(".") &&
+					tokens[i+5].kind == tokIdent && tokens[i+5].value == n && (tokens[i+6].isPunct(";") || tokens[i+6].isPunct(",") || tokens[i+6].nl)
+				if !alias {
+					out[n] = true
+				}
+			}
+		}
+	}
+	return out
 }
 
 var pairs = map[string]string{"(": ")", "[": "]", "{": "}"}
@@ -210,20 +334,31 @@ func matchBrackets(tokens []token) ([]int, bool) {
 	return match, ok && len(stack) == 0
 }
 
+// popExpr pops the frames of the current expression and statement: arrow and
+// conditional tails and, when stmt is set, unbraced if/else/loop bodies. A
+// comma ends only the first kind; `;`, a newline that ends a statement and a
+// closing bracket end both.
+func popExpr(stack []frame, stmt bool) []frame {
+	for len(stack) > 0 {
+		switch stack[len(stack)-1].kind {
+		case frArrow, frCond:
+			stack = stack[:len(stack)-1]
+			continue
+		case frStmt, frLoopStmt:
+			if stmt {
+				stack = stack[:len(stack)-1]
+				continue
+			}
+		}
+		break
+	}
+	return stack
+}
+
 // applyToken updates the nesting stack for tokens[i].
 func applyToken(stack []frame, tokens []token, i int) []frame {
 	t := tokens[i]
 	prev := tokens[i-1]
-	popExpr := func() {
-		for len(stack) > 0 {
-			switch stack[len(stack)-1].kind {
-			case frArrow, frCond, frStmt, frLoopStmt:
-				stack = stack[:len(stack)-1]
-				continue
-			}
-			break
-		}
-	}
 	switch {
 	case t.isPunct("("):
 		return append(stack, frame{frParen})
@@ -232,7 +367,7 @@ func applyToken(stack []frame, tokens []token, i int) []frame {
 	case t.isPunct("{"):
 		kind := frObject
 		switch {
-		case prev.isPunct(")") && prev.fn, prev.isOperator(">") && tokens[i-2].isOperator("="):
+		case prev.isPunct(")") && (prev.fn || prev.meth), prev.isOperator(">") && tokens[i-2].isOperator("="):
 			kind = frFunc
 		case prev.isPunct(")") && prev.loop, prev.kind == tokIdent && prev.value == "do":
 			kind = frLoop
@@ -248,9 +383,15 @@ func applyToken(stack []frame, tokens []token, i int) []frame {
 		}
 		return append(stack, frame{kind})
 	case t.isPunct(")"), t.isPunct("]"), t.isPunct("}"):
-		popExpr()
+		stack = popExpr(stack, true)
+		closed := -1
 		if len(stack) > 0 {
+			closed = stack[len(stack)-1].kind
 			stack = stack[:len(stack)-1]
+		}
+		if closed == frBlock || closed == frLoop {
+			// The block ends the unbraced if/else/for/while body it was.
+			stack = popExpr(stack, true)
 		}
 		// An unbraced statement body after if(...), for(...) or while(...).
 		if t.isPunct(")") && t.ctrl && i+1 < len(tokens) && !tokens[i+1].isPunct("{") && !tokens[i+1].isPunct(";") {
@@ -260,10 +401,14 @@ func applyToken(stack []frame, tokens []token, i int) []frame {
 			return append(stack, frame{frStmt})
 		}
 		return stack
-	case t.isPunct(","), t.isPunct(";"):
-		popExpr()
+	case t.isPunct(","):
+		return popExpr(stack, false)
+	case t.isPunct(";"):
+		return popExpr(stack, true)
 	case t.kind == tokIdent && t.value == "else" && i+1 < len(tokens) && !tokens[i+1].isPunct("{"):
 		return append(stack, frame{frStmt})
+	case t.kind == tokIdent && t.value == "do" && i+1 < len(tokens) && !tokens[i+1].isPunct("{"):
+		return append(stack, frame{frLoopStmt})
 	case t.isOperator(">") && prev.isOperator("="):
 		if i+1 < len(tokens) && !tokens[i+1].isPunct("{") {
 			return append(stack, frame{frArrow})
@@ -277,6 +422,41 @@ func applyToken(stack []frame, tokens []token, i int) []frame {
 		return append(stack, frame{frCond})
 	}
 	return stack
+}
+
+// noEnd are identifiers after which a newline does not end a statement: they
+// need an operand, or start a construct that continues on the next line.
+var noEnd = map[string]bool{
+	"return": true, "typeof": true, "case": true, "in": true, "of": true, "delete": true, "void": true, "throw": true,
+	"new": true, "await": true, "yield": true, "else": true, "do": true, "instanceof": true, "function": true, "class": true,
+	"async": true, "const": true, "let": true, "var": true, "if": true, "while": true, "for": true, "with": true,
+	"switch": true, "catch": true, "try": true, "finally": true, "import": true, "export": true, "extends": true,
+	"static": true, "get": true, "set": true,
+}
+
+// continues are identifiers that continue the expression on the previous
+// line when they start a line.
+var continues = map[string]bool{"in": true, "of": true, "instanceof": true, "else": true, "catch": true, "finally": true}
+
+// endsStatementBefore reports whether a newline before tokens[i] ends the
+// statement of the previous token (automatic semicolon insertion): the line
+// ended on an operand and the next one starts with an identifier that cannot
+// continue it. Anything doubtful keeps the statement open, which only makes
+// reachability weaker, never stronger.
+func endsStatementBefore(tokens []token, i int) bool {
+	t, prev := tokens[i], tokens[i-1]
+	if !t.nl || t.kind != tokIdent || continues[t.value] {
+		return false
+	}
+	switch prev.kind {
+	case tokIdent:
+		return !noEnd[prev.value]
+	case tokString, tokRegex:
+		return true
+	case tokPunct:
+		return prev.text == "]" || prev.text == "}" || prev.text == ")" && !prev.ctrl
+	}
+	return false
 }
 
 // scanObject reads the argument of an exec_command or shell call. It returns
@@ -330,6 +510,8 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 					call.Command, call.CommandStatic = commandValue(tokens, j+2, callee == "shell")
 					call.CmdStart, call.CmdEnd = tokens[j+2].start, tokens[j+2].end
 				}
+			case "__proto__":
+				opaque = true // may supply inherited properties
 			case "workdir":
 				if seenDir {
 					dup = true
@@ -359,6 +541,8 @@ func scanObject(tokens []token, i int, callee string, match []int) (codexExecCal
 				seenDir = true
 				call.HasWorkdir, call.WorkdirStatic = true, false
 			}
+		case atProperty && (t.kind == tokIdent || t.kind == tokString) && j+1 < len(tokens) && !tokens[j+1].isPunct(":") && !tokens[j+1].isPunct(",") && !tokens[j+1].isPunct("}"):
+			opaque = true // a getter, method or other form that can supply the command
 		}
 	}
 	switch {
@@ -485,6 +669,11 @@ type token struct {
 	// regular expression may follow), loop the head of a for or while, fn a
 	// function parameter list.
 	ctrl, loop, fn bool
+	// meth marks the ")" of a method definition's parameters (`name(...) {`).
+	meth bool
+	// nl: a line break precedes the token. weak: the token is inside an
+	// unterminated string or template literal.
+	nl, weak bool
 }
 
 func (t token) isKey() bool {
@@ -512,6 +701,18 @@ type lexer struct {
 	parens  []token // flags of the open parentheses
 	depth   int
 	tooDeep bool
+	// nl is set after a line break until the next token is added.
+	nl bool
+	// unterminated is set when a string, template literal or comment runs to
+	// the end of the program.
+	unterminated bool
+}
+
+// add appends a token, recording a preceding line break.
+func (l *lexer) add(t token) int {
+	t.nl, l.nl = l.nl, false
+	l.toks = append(l.toks, t)
+	return len(l.toks) - 1
 }
 
 // regexAllowed reports whether a slash after the tokens so far starts a
@@ -572,10 +773,26 @@ func parenFlags(toks []token) token {
 		open.ctrl, open.loop = true, true
 	case prev.kind == tokIdent && prev.value == "await" && n > 1 && toks[n-2].kind == tokIdent && toks[n-2].value == "for":
 		open.ctrl, open.loop = true, true
+	case prev.kind == tokIdent && !noEnd[prev.value] && !regexKeywords[prev.value] && n > 1 && methodContext(toks[n-2]):
+		open.meth = true
 	case isFunction(n - 1), prev.kind == tokIdent && isFunction(n-2), prev.kind == tokIdent && n > 2 && toks[n-2].isOperator("*") && isFunction(n-3), prev.isOperator("*") && isFunction(n-2):
 		open.fn = true
 	}
 	return open
+}
+
+// methodContext reports whether t can precede the name of a method
+// definition in an object literal or class body.
+func methodContext(t token) bool {
+	switch t.kind {
+	case tokPunct:
+		return t.text == "{" || t.text == "," || t.text == ";" || t.text == "}"
+	case tokIdent:
+		return t.value == "static" || t.value == "async" || t.value == "get" || t.value == "set"
+	case tokOperator:
+		return t.text == "*"
+	}
+	return false
 }
 
 // run lexes from pos. In substitution mode it stops after the `}` that closes
@@ -587,6 +804,9 @@ func (l *lexer) run(pos int, subst bool) int {
 		c := src[pos]
 		switch {
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
+			if c == '\n' || c == '\r' {
+				l.nl = true
+			}
 			pos++
 		case c == '/' && pos+1 < len(src) && src[pos+1] == '/':
 			for pos < len(src) && src[pos] != '\n' {
@@ -595,22 +815,33 @@ func (l *lexer) run(pos int, subst bool) int {
 		case c == '/' && pos+1 < len(src) && src[pos+1] == '*':
 			end := strings.Index(src[pos+2:], "*/")
 			if end < 0 {
+				l.unterminated = true
 				return len(src)
+			}
+			if strings.ContainsAny(src[pos:pos+2+end], "\n\r") {
+				l.nl = true
 			}
 			pos += 2 + end + 2
 		case c == '"' || c == '\'' || c == '`':
-			idx := len(l.toks)
-			l.toks = append(l.toks, token{kind: tokString, start: pos})
+			idx := l.add(token{kind: tokString, start: pos})
+			was := l.unterminated
 			value, static, next := l.lexString(pos)
 			l.toks[idx].value, l.toks[idx].static, l.toks[idx].end = value, static, next
+			if l.unterminated && !was {
+				// The literal never closes: what looks like code inside it
+				// is not known to run.
+				for k := idx; k < len(l.toks); k++ {
+					l.toks[k].weak = true
+				}
+			}
 			pos = next
 		case c == '/' && regexAllowed(l.toks):
 			if next, ok := scanRegex(src, pos); ok {
-				l.toks = append(l.toks, token{kind: tokRegex, start: pos, end: next})
+				l.add(token{kind: tokRegex, start: pos, end: next})
 				pos = next
 				break
 			}
-			l.toks = append(l.toks, token{kind: tokOperator, text: "/", start: pos, end: pos + 1})
+			l.add(token{kind: tokOperator, text: "/", start: pos, end: pos + 1})
 			pos++
 		case isIdentByte(c) || (c == '\\' && pos+1 < len(src) && src[pos+1] == 'u'):
 			start := pos
@@ -626,7 +857,7 @@ func (l *lexer) run(pos int, subst bool) int {
 				}
 			}
 			word := sb.String()
-			l.toks = append(l.toks, token{kind: tokIdent, text: word, value: word, static: true, start: start, end: pos})
+			l.add(token{kind: tokIdent, text: word, value: word, static: true, start: start, end: pos})
 		case strings.IndexByte("{}[]():,;.", c) >= 0:
 			if subst && c == '{' {
 				braces++
@@ -645,16 +876,19 @@ func (l *lexer) run(pos int, subst bool) int {
 				if n := len(l.parens); n > 0 {
 					p := l.parens[n-1]
 					l.parens = l.parens[:n-1]
-					t.ctrl, t.loop, t.fn = p.ctrl, p.loop, p.fn
+					t.ctrl, t.loop, t.fn, t.meth = p.ctrl, p.loop, p.fn, p.meth
 				}
 			}
-			l.toks = append(l.toks, t)
+			l.add(t)
 			pos++
 		default:
 			_, size := utf8.DecodeRuneInString(src[pos:])
-			l.toks = append(l.toks, token{kind: tokOperator, text: src[pos : pos+size], start: pos, end: pos + size})
+			l.add(token{kind: tokOperator, text: src[pos : pos+size], start: pos, end: pos + size})
 			pos += size
 		}
+	}
+	if subst {
+		l.unterminated = true
 	}
 	return pos
 }
@@ -727,6 +961,7 @@ func (l *lexer) lexString(pos int) (string, bool, int) {
 			i++
 		}
 	}
+	l.unterminated = true
 	return out.String(), false, len(source)
 }
 

@@ -219,9 +219,9 @@ go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 
 ## Stability
 
-agentcmd is pre-1.0 in practice: the Go API (`Config`, the `native` and
+agentcmd is pre-1.0 (the first public version is `v0.1.0`): the Go API (`Config`, the `native` and
 `rules` contracts, the packages listed in `docs/versioning.md`) may change
-between releases, and each change is recorded in [`CHANGELOG.md`](CHANGELOG.md).
+between minor versions, and each change is recorded in [`CHANGELOG.md`](CHANGELOG.md).
 The JSON output is versioned separately (`model.SchemaVersion`, semantic
 versioning, see [`docs/versioning.md`](docs/versioning.md)).
 

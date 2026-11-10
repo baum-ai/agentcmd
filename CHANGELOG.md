@@ -1,11 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 — first public release
 
-Analyzer version 1.1.0. The JSON schema (`model.SchemaVersion`) is unchanged
-at 1.0.0: no field or action kind was added or removed, so
-`docs/versioning.md` requires no schema bump. Analysis IDs change, as they
-do whenever the analyzer version or a ruleset changes.
+This is the first public tag. The repository carried an unpublished
+"1.0.0" before; it is now numbered 0.1.0, and the Go API may change between
+minor versions until 1.0.0. The analyzer version is 1.1.0. The JSON schema
+(`model.SchemaVersion`) is unchanged at 1.0.0: no field or action kind was
+added or removed, so `docs/versioning.md` requires no schema bump. Analysis
+IDs change, as they do whenever the analyzer version or a ruleset changes.
+
+### Changes since the internal baseline
 
 - Module path is now `github.com/baum-ai/agentcmd` (the repository moved
   organisations); the License holder is Baum AI Ltd.
@@ -40,6 +44,17 @@ do whenever the analyzer version or a ruleset changes.
   `native.Result.Shells`, `native.Result.Parts` and the `Workdir`,
   `WorkdirUnknown`, `Span` and `Reach` fields of `native.ShellSource` carry
   this.
+- Code-mode scanning follows JavaScript statement ends (`;`, closing
+  brackets, automatic semicolon insertion on a line break), treats `do`,
+  object-method and class-method bodies as repeated or latent, accepts
+  `tools?.name(...)` and `tools.name?.(...)`, ignores a bare `shell`,
+  `exec_command` or `apply_patch` the program declares itself, and reports any
+  other reference to those tools (`const run = tools.exec_command`,
+  `tools[name](...)`) as an unresolved part. Getters, methods and `__proto__`
+  in the argument object make a call unresolved, and an unterminated string,
+  template literal or comment is a `syntax_error` and makes the result
+  partial. `std/codex/shell` is version 2 (relative `workdir` with an
+  unknown base is unknown, an absolute one is cleaned).
 - A binding that reports a `limit_reached` or `syntax_error` diagnostic now
   makes the analysis partial (ADR 0007).
 - `git -C` composes several options in order and resolves the command's
@@ -47,9 +62,9 @@ do whenever the analyzer version or a ruleset changes.
 - A native node's span now covers the whole input (it used to end at byte 1,
   and was invalid for an empty input).
 
-## 1.0.0 — 2026-09-17
+### Initial feature set (internal, 2026-09-17)
 
-First stable release of the declared support matrix.
+The declared support matrix at the start of the repository history:
 
 - Canonical model (`model`, schema 1.0.0): tagged inputs, execution graph,
   typed actions with opaque round-tripping, resources with namespaces,

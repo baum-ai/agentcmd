@@ -37,6 +37,7 @@ var gitRule = rules.Rule{
 				expr = append(expr, c.Text)
 				switch {
 				case c.Concrete() && strings.HasPrefix(c.Text, "/"):
+					expr = []string{c.Text}
 					dir = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Clean(c.Text), Assumptions: []string{"working directory set by git -C"}}
 				case c.Concrete() && dir.Concrete():
 					dir = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Join(dir.Text, c.Text), Assumptions: []string{"working directory set by git -C"}}

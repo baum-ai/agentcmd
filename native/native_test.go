@@ -3,7 +3,7 @@ package native
 import (
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 func TestRegistryLookupByFingerprint(t *testing.T) {

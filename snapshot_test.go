@@ -5,15 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/languages"
+	"github.com/baum-ai/agentcmd/model"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 func snapEngine(t *testing.T, r snapshot.Resolver) *Engine {
 	t.Helper()
-	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: Languages{Python: true, JavaScript: true}, Resolver: r})
+	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Resolver: r})
 	if err != nil {
 		t.Fatal(err)
 	}

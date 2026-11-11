@@ -1,8 +1,14 @@
-// Package languages holds the embedded-language frontends (Python and
-// JavaScript). They implement a documented semantic subset over tree-sitter
-// syntax: lexical bindings, literal and bounded values, known
+// Package languages holds the optional embedded-language frontends (Python
+// and JavaScript). They implement a documented semantic subset over
+// tree-sitter syntax: lexical bindings, literal and bounded values, known
 // filesystem/path/subprocess calls, and control-flow qualification. Function
 // bodies are latent until called; everything else is an explicit unknown.
+//
+// The frontends are opt-in, like a database/sql driver: only a program that
+// imports this package links the tree-sitter runtime and its grammars.
+// Select it with agentcmd.Config{Frontend: languages.Frontend(), Languages:
+// agentcmd.Languages{Python: true, JavaScript: true}}. Without it Python and
+// JavaScript programs are reported as unsupported.
 package languages
 
 import (
@@ -13,37 +19,29 @@ import (
 
 	ts "github.com/odvcencio/gotreesitter"
 
-	"github.com/lastpersonlabs/agentcmd/internal/analysis"
-	"github.com/lastpersonlabs/agentcmd/internal/languages/treesitter"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/internal/analysis"
+	"github.com/baum-ai/agentcmd/internal/treesitter"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
-// Enabled selects the languages that receive semantic analysis.
-type Enabled struct {
-	Python     bool
-	JavaScript bool
+// Frontend returns the Python and JavaScript frontends for
+// agentcmd.Config.Frontend. The engine decides per program whether the
+// language is enabled (agentcmd.Config.Languages); this hook reports false
+// for languages it does not know so they are recorded as unsupported
+// programs.
+func Frontend() analysis.Frontend {
+	return analysis.NewFrontend(treesitter.Version, analyzer)
 }
 
-// Analyzer returns the program hook for the engine. It reports false for
-// languages that are disabled or unknown so the engine records them as
-// unsupported programs.
-func Analyzer(en Enabled) analysis.ProgramFunc {
-	return func(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {
-		switch strings.ToLower(p.Language) {
-		case "python":
-			if !en.Python {
-				return false
-			}
-			return run(b, parent, p, ctx, treesitter.Python, (*pyFrontend).module)
-		case "javascript", "js", "node", "typescript":
-			if !en.JavaScript {
-				return false
-			}
-			return run(b, parent, p, ctx, treesitter.JavaScript, (*jsFrontend).program)
-		}
-		return false
+func analyzer(b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context) bool {
+	switch analysis.LanguageKey(p.Language) {
+	case "python":
+		return run(b, parent, p, ctx, treesitter.Python, (*pyFrontend).module)
+	case "javascript":
+		return run(b, parent, p, ctx, treesitter.JavaScript, (*jsFrontend).program)
 	}
+	return false
 }
 
 // bindingKind says how a name became bound.

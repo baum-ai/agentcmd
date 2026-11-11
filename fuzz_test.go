@@ -6,7 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/languages"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // checkInvariants asserts the release invariants on any analysis: it
@@ -53,7 +54,7 @@ func FuzzAnalyzeShell(f *testing.F) {
 	for _, s := range seeds {
 		f.Add(s)
 	}
-	e, err := New(Config{Rules: stdRules(), Native: stdBindings(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500, NestingDepth: 4}})
+	e, err := New(Config{Rules: stdRules(), Native: stdBindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500, NestingDepth: 4}})
 	if err != nil {
 		f.Fatal(err)
 	}
@@ -72,7 +73,7 @@ func FuzzAnalyzePython(f *testing.F) {
 	for _, s := range []string{"open('x')", "from pathlib import Path\nPath('a')/'b'", "def f(:\n", "import subprocess\nsubprocess.run(['ls'], shell=True)", "x = '\\''", "class A:\n  def open(self): pass\nA().open()"} {
 		f.Add(s)
 	}
-	e, _ := New(Config{Rules: stdRules(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500}})
+	e, _ := New(Config{Rules: stdRules(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500}})
 	f.Fuzz(func(t *testing.T, src string) {
 		checkInvariants(t, e, func() model.Analysis {
 			inv := model.Invocation{ID: "f", Tool: model.ToolIdentity{Name: "py"}, Input: model.Input{Kind: model.InputSource, Language: "python", Source: src}, Context: ctxWith("/w")}
@@ -89,7 +90,7 @@ func FuzzAnalyzeJavaScript(f *testing.F) {
 	for _, s := range []string{"require('fs').rmSync('x')", "const {a} = require('fs'); a()", "import fs from 'fs'; await fs.promises.readFile(`${x}`)", "function f(){f()} f()", "x => {"} {
 		f.Add(s)
 	}
-	e, _ := New(Config{Rules: stdRules(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500}})
+	e, _ := New(Config{Rules: stdRules(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500}})
 	f.Fuzz(func(t *testing.T, src string) {
 		checkInvariants(t, e, func() model.Analysis {
 			inv := model.Invocation{ID: "f", Tool: model.ToolIdentity{Name: "js"}, Input: model.Input{Kind: model.InputSource, Language: "javascript", Source: src}, Context: ctxWith("/w")}
@@ -106,7 +107,7 @@ func FuzzInvocationJSON(f *testing.F) {
 	f.Add([]byte(`{"id":"x","tool":{"namespace":"harness","name":"Bash"},"input":{"kind":"json","json":{"command":"ls"}},"context":{"working_dir":{"known":true,"value":"/w"},"shell":{"known":false},"namespace":{"kind":"host"}}}`))
 	f.Add([]byte(`{"id":"p","tool":{"name":"apply_patch"},"input":{"kind":"patch","patch":"*** Begin Patch\n*** Add File: a\n+x\n*** End Patch"},"context":{"working_dir":{"known":false},"shell":{"known":false},"namespace":{"kind":"unknown"}}}`))
 	f.Add([]byte(`{"id":"a","tool":{"name":"exec"},"input":{"kind":"argv","executable":"rm","argv":["-rf","--","x"]},"context":{"working_dir":{"known":false},"shell":{"known":false},"namespace":{}}}`))
-	e, _ := New(Config{Rules: stdRules(), Native: stdBindings(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500, NestingDepth: 4}})
+	e, _ := New(Config{Rules: stdRules(), Native: stdBindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}, Limits: Limits{SyntaxNodes: 5000, Actions: 500, NestingDepth: 4}})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var inv model.Invocation
 		if json.Unmarshal(data, &inv) != nil {
@@ -119,5 +120,34 @@ func FuzzInvocationJSON(f *testing.F) {
 			}
 			return a
 		})
+	})
+}
+
+func FuzzCodexExec(f *testing.F) {
+	for _, s := range []string{
+		realProgram, `tools.exec_command({cmd: "git add a", workdir})`, "tools.exec_command({cmd: `a${b}`})", `tools.exec_command({...o})`,
+		`tools.exec_command({["cmd"]: "x"}`, `await Promise.all([tools.exec_command({cmd:"ls",workdir:"/a"})])`, `tools.shell({command:["bash","-lc","ls"]})`,
+		`tools.apply_patch("*** Begin Patch\n*** End Patch")`, "/* \"", "`${", `"\u{`, `exec_command({exec_command({`,
+		"if (a) /\"/.test(s); tools.exec_command({cmd: 'ls'})", "i++ / 2; `${/* } */ tools.exec_command({cmd:'ls'})}`", `function exec_command({cmd}) {} x => tools.shell(x)`,
+		`for (;;) { ok && tools.exec_command({cmd:"ls", cmd:"pwd"}) }`, `tools.exec_command({\u0063md: "ls"})`,
+		"const f = x => x\ntools?.exec_command?.({cmd:'ls'})", "if (a) { b() } else if (c) { d() }\ntools.exec_command({cmd:'ls'})", "class A { async m() { tools.shell({command:['ls']}) } }",
+		"const r = tools.exec_command; tools[n](1); do tools.exec_command({cmd:'ls'}); while (x)", "text(`${", `tools.exec_command({get cmd() {}, __proto__: {}})`,
+	} {
+		f.Add(s)
+	}
+	e, err := New(Config{Rules: stdRules(), Native: stdBindings(), Limits: Limits{SyntaxNodes: 5000, Actions: 500, NestingDepth: 4}})
+	if err != nil {
+		f.Fatal(err)
+	}
+	f.Fuzz(func(t *testing.T, program string) {
+		for _, kind := range []model.InputKind{model.InputText, model.InputJSON} {
+			checkInvariants(t, e, func() model.Analysis {
+				a, err := e.Analyze(context.Background(), execInv(program, kind, "/w"))
+				if err != nil {
+					t.Skip(err)
+				}
+				return a
+			})
+		}
 	})
 }

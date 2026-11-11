@@ -1,14 +1,17 @@
 package standard
 
 import (
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"path"
+	"strings"
+
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 // gitRule classifies documented git subcommands conservatively. Aliases,
 // hooks, config and additional processes remain assumptions.
 var gitRule = rules.Rule{
-	ID: "std/git", Version: "1", Executables: []string{"git"}, Platform: "",
+	ID: "std/git", Version: "2", Executables: []string{"git"}, Platform: "",
 	Doc: "git [-C path] [-c name=value] [--git-dir=path] [--work-tree=path] [--no-pager] <command> [args]",
 	Apply: func(cmd rules.Command) rules.Result {
 		o := rules.ParseOptions(cmd.Args, rules.OptionSpec{ShortArgs: "Cc", ShortFlags: "pP", LongArgs: []string{"git-dir", "work-tree", "namespace", "exec-path", "config-env", "list-cmds"},
@@ -25,8 +28,29 @@ var gitRule = rules.Rule{
 			return res
 		}
 		repo := cmd.Resource(model.Literal("."), "repository")
-		if c, ok := o.Value("C"); ok {
-			repo = cmd.Resource(c, "repository")
+		if cs := o.Values["C"]; len(cs) > 0 {
+			// Each -C is relative to the previous one, and the command runs
+			// there: operands resolve against the composed directory.
+			dir := cmd.Cwd
+			expr := make([]string, 0, len(cs))
+			for _, c := range cs {
+				expr = append(expr, c.Text)
+				switch {
+				case c.Concrete() && strings.HasPrefix(c.Text, "/"):
+					expr = []string{c.Text}
+					dir = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Clean(c.Text), Assumptions: []string{"working directory set by git -C"}}
+				case c.Concrete() && dir.Concrete():
+					dir = model.Value{Knowledge: model.KnowledgeDerived, Text: path.Join(dir.Text, c.Text), Assumptions: []string{"working directory set by git -C"}}
+				default:
+					dir = model.Unknown()
+				}
+			}
+			cmd.Cwd = dir
+			repo = cmd.Resource(model.Literal("."), "repository")
+			repo.Expression = strings.Join(expr, "/")
+			if len(cs) == 1 {
+				repo.Expression = cs[0].Text
+			}
 		}
 		kind, known := map[string]model.ActionKind{
 			"status": model.GitInspect, "log": model.GitInspect, "diff": model.GitInspect, "show": model.GitInspect, "blame": model.GitInspect,

@@ -9,7 +9,7 @@ It can analyze a single shell command, a stream of provider tool-call records
 (OpenAI, Anthropic, Gemini), or a coding agent's own on-disk session
 transcript (Claude Code, Codex CLI) directly — no export step needed.
 
-The module path is `github.com/lastpersonlabs/agentcmd`; the reference CLI is
+The module path is `github.com/baum-ai/agentcmd`; the reference CLI is
 `cmd/agentcmd`.
 
 The library never executes input, never reads the host filesystem or
@@ -18,8 +18,14 @@ environment, and builds with `CGO_ENABLED=0`.
 ## Getting started
 
 ```sh
+go install github.com/baum-ai/agentcmd/cmd/agentcmd@latest
+# or, from a checkout:
 go build -o agentcmd ./cmd/agentcmd
 ```
+
+As a library: `go get github.com/baum-ai/agentcmd@latest`.
+
+Requires Go 1.26 or newer.
 
 ### Parse a coding agent's own session logs
 
@@ -83,11 +89,44 @@ Build an engine once and reuse it; it holds no per-call state.
 
 ```go
 e, err := agentcmd.New(agentcmd.Config{
-    Rules:     standard.Rules(),      // rules/standard
-    Native:    nativestd.Bindings(),  // native/standard
+    Rules:  standard.Rules(),      // rules/standard
+    Native: nativestd.Bindings(),  // native/standard
+})
+```
+
+### Embedded Python and JavaScript (opt-in)
+
+Shell analysis, rules, native bindings, adapters and streams do not depend on
+a tree-sitter runtime. Analysis of Python and JavaScript sources (`python -c`,
+`node -e`, heredoc scripts) lives in the separate package `languages`, which
+you import and pass to the engine, like a `database/sql` driver:
+
+```go
+import "github.com/baum-ai/agentcmd/languages"
+
+e, err := agentcmd.New(agentcmd.Config{
+    Rules:     standard.Rules(),
+    Native:    nativestd.Bindings(),
+    Frontend:  languages.Frontend(),
     Languages: agentcmd.Languages{Python: true, JavaScript: true},
 })
 ```
+
+Without `Frontend`, those programs are still extracted but reported as
+`unsupported` programs (the invocation is partial); nothing else changes.
+Only a program that imports `languages` links
+[gotreesitter](https://github.com/odvcencio/gotreesitter), which by default
+embeds all ~206 grammars. If you opt in and only need agentcmd's languages,
+build with `-tags 'grammar_subset grammar_subset_javascript grammar_subset_python'`.
+Keep both language tags: if a tag is omitted, analysis of that language
+reports a `syntax_error` diagnostic ("grammar is not linked into this build")
+and the result is partial. The reference CLI opts in.
+
+Measured on linux/amd64 with Go 1.26.10, `CGO_ENABLED=0 -trimpath
+-ldflags='-s -w'`: the reference CLI is 30.1 MB with all grammars and 11.6 MB
+with the tags above; a shell-only program using the root package,
+`rules/standard`, `native/standard`, `adapters` and `stream` is 3.6 MB (an
+empty hello-world program is 1.6 MB).
 
 ### Analyze a shell command
 
@@ -150,7 +189,7 @@ input order; the callback's error aborts processing. See
 bounds, and [`render`](render) for the JSON and text renderers.
 
 Projections for integrations live in `projection/otel` (OpenTelemetry GenAI
-attributes, no SDK dependency) and `projection/recountable` (flat indexable
+attributes, no SDK dependency) and `projection/records` (flat indexable
 records). Neither is imported by the root package.
 
 ## Documentation
@@ -177,3 +216,15 @@ records). Neither is imported by the root package.
 CGO_ENABLED=0 go test ./...
 go test ./internal/corpus -update   # regenerate docs/corpus-report.md
 ```
+
+## Stability
+
+agentcmd is pre-1.0 (the first public version is `v0.1.0`): the Go API (`Config`, the `native` and
+`rules` contracts, the packages listed in `docs/versioning.md`) may change
+between minor versions, and each change is recorded in [`CHANGELOG.md`](CHANGELOG.md).
+The JSON output is versioned separately (`model.SchemaVersion`, semantic
+versioning, see [`docs/versioning.md`](docs/versioning.md)).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

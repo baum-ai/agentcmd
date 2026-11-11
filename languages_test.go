@@ -5,14 +5,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/languages"
+	"github.com/baum-ai/agentcmd/model"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func langEngine(t *testing.T) *Engine {
 	t.Helper()
-	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: Languages{Python: true, JavaScript: true}})
+	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Frontend: languages.Frontend(), Languages: Languages{Python: true, JavaScript: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +128,7 @@ func TestPythonDegradations(t *testing.T) {
 		t.Fatalf("%s", describeActions(a))
 	}
 	// Budget: a big script is reported, not silently truncated.
-	small, _ := New(Config{Rules: rstd.Rules(), Languages: Languages{Python: true}, Limits: Limits{SyntaxNodes: 30}})
+	small, _ := New(Config{Rules: rstd.Rules(), Frontend: languages.Frontend(), Languages: Languages{Python: true}, Limits: Limits{SyntaxNodes: 30}})
 	a, _ = small.AnalyzeShell(context.Background(), []byte("python - <<'PY'\n"+strings.Repeat("open('a')\n", 50)+"PY\n"), ctxWith("/w"))
 	if !a.Partial {
 		t.Fatal("budget exhaustion must be partial")
@@ -321,9 +322,28 @@ func TestCrossLanguageRecursionSharesBudget(t *testing.T) {
 		t.Fatalf("%+v", a.Diagnostics)
 	}
 	// Derived-byte budget shared across nested sources.
-	tiny, _ := New(Config{Rules: rstd.Rules(), Languages: Languages{Python: true}, Limits: Limits{DerivedBytes: 40}})
+	tiny, _ := New(Config{Rules: rstd.Rules(), Frontend: languages.Frontend(), Languages: Languages{Python: true}, Limits: Limits{DerivedBytes: 40}})
 	a, _ = tiny.AnalyzeShell(context.Background(), []byte("python -c \"import os; os.system('cat a'); os.system('cat b'); os.system('cat c')\""), ctxWith("/w"))
 	if !a.Partial {
 		t.Fatalf("derived byte budget must be enforced: %+v", a.Diagnostics)
+	}
+}
+
+// Without a Frontend the root package does not link tree-sitter: embedded
+// programs are reported as unsupported, whatever Languages says.
+func TestLanguagesNeedFrontend(t *testing.T) {
+	e, err := New(Config{Rules: rstd.Rules(), Native: nstd.Bindings(), Languages: Languages{Python: true, JavaScript: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := e.AnalyzeShell(context.Background(), []byte(`python3 -c "import os; os.remove('x')"; node -e "require('fs').rmSync('y')"`), ctxWith("/w"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.Partial || !hasDiag(a, model.DiagUnsupported, "python analysis requires a language frontend") || !hasDiag(a, model.DiagUnsupported, "javascript analysis requires a language frontend") {
+		t.Fatalf("%v", a.Diagnostics)
+	}
+	if len(actionsOf(a, model.FSDelete)) != 0 || a.Versions.LanguageRuntime != "" {
+		t.Fatalf("%s %q", describeActions(a), a.Versions.LanguageRuntime)
 	}
 }

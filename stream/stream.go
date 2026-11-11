@@ -11,9 +11,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd"
-	"github.com/lastpersonlabs/agentcmd/adapters"
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd"
+	"github.com/baum-ai/agentcmd/adapters"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Options configure a Processor. Zero values take the documented defaults.

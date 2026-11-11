@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/observe"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/observe"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func TestProjectUsesEventsNotChildSpans(t *testing.T) {

@@ -1,0 +1,248 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_3b2cb0bdbc92c6f7bc7fab43",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/9e41843a7a1229c7",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "partial": true,
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 147
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "unknown",
+      "span": {
+        "source": "s0",
+        "start": 48,
+        "end": 49
+      },
+      "reachability": "repeated",
+      "detail": "the argument of the code-mode exec_command call is not an object literal",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n2",
+      "kind": "unknown",
+      "span": {
+        "source": "s0",
+        "start": 71,
+        "end": 114
+      },
+      "reachability": "always",
+      "detail": "the object of the code-mode exec_command call repeats a property, so the last one wins at run time",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n2",
+      "kind": "unknown",
+      "span": {
+        "source": "s0",
+        "start": 135,
+        "end": 142
+      },
+      "reachability": "always",
+      "detail": "the patch text of the code-mode apply_patch call is not a static string",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n3",
+      "kind": "process.unresolved",
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/codex/exec",
+        "rule_version": "1",
+        "assumptions": [
+          "the program is not executed; its values and control flow are not modeled"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 48,
+            "end": 49
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "unknown"
+        },
+        "shell": true,
+        "reason": "the argument of the code-mode exec_command call is not an object literal"
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n4",
+      "kind": "process.unresolved",
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/codex/exec",
+        "rule_version": "1",
+        "assumptions": [
+          "the program is not executed; its values and control flow are not modeled"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 71,
+            "end": 114
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "unknown"
+        },
+        "shell": true,
+        "reason": "the object of the code-mode exec_command call repeats a property, so the last one wins at run time"
+      }
+    },
+    {
+      "id": "a3",
+      "node": "n5",
+      "kind": "native.patch",
+      "evidence": {
+        "basis": "tool_contract",
+        "rule": "std/codex/exec",
+        "rule_version": "1",
+        "assumptions": [
+          "patch text is computed; files unknown"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 135,
+            "end": 142
+          }
+        ]
+      },
+      "native": {
+        "operation": "apply",
+        "format": "unknown"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 147,
+      "text": "for (const s of steps) await tools.exec_command(s);\ntools.exec_command({cmd: \"git status\", cmd: \"git commit -m x\"});\ntools.apply_patch(`${body}`);\n"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unsupported",
+      "severity": "info",
+      "message": "JavaScript control flow is not modeled: calls inside blocks, after \u0026\u0026, || or ?, in loops or in function bodies are marked conditional, repeated or latent, not known to run",
+      "node": "n2"
+    },
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "the argument of the code-mode exec_command call is not an object literal",
+      "node": "n3",
+      "span": {
+        "source": "s0",
+        "start": 48,
+        "end": 49
+      }
+    },
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "the object of the code-mode exec_command call repeats a property, so the last one wins at run time",
+      "node": "n4",
+      "span": {
+        "source": "s0",
+        "start": 71,
+        "end": 114
+      }
+    },
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "the patch text of the code-mode apply_patch call is not a static string",
+      "node": "n5",
+      "span": {
+        "source": "s0",
+        "start": 135,
+        "end": 142
+      }
+    }
+  ]
+}

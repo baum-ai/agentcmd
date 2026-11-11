@@ -3,8 +3,8 @@ package shell
 import (
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 // noEffect are builtins whose effects stay inside the shell process.

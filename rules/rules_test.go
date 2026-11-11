@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 func vals(s ...string) []model.Value {

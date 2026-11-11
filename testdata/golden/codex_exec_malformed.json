@@ -1,0 +1,133 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_6f4ebd593f313a4fe45a178d",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/9e41843a7a1229c7",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "partial": true,
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 36
+      },
+      "reachability": "always",
+      "syntax": "partial",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "unknown",
+      "span": {
+        "source": "s0",
+        "start": 19,
+        "end": 20
+      },
+      "reachability": "always",
+      "detail": "unterminated argument of the code-mode exec_command call",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n3",
+      "kind": "process.unresolved",
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/codex/exec",
+        "rule_version": "1",
+        "assumptions": [
+          "the program is not executed; its values and control flow are not modeled"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 19,
+            "end": 20
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "unknown"
+        },
+        "shell": true,
+        "reason": "unterminated argument of the code-mode exec_command call"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 36,
+      "text": "tools.exec_command({cmd: \"git add a\""
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "syntax_error",
+      "severity": "warning",
+      "message": "code-mode program does not parse as JavaScript (unbalanced brackets); only the calls found by the lexical scan are analyzed",
+      "node": "n2"
+    },
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "unterminated argument of the code-mode exec_command call",
+      "node": "n3",
+      "span": {
+        "source": "s0",
+        "start": 19,
+        "end": 20
+      }
+    }
+  ]
+}

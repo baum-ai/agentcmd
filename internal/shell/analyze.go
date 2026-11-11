@@ -1,8 +1,8 @@
 package shell
 
 import (
-	"github.com/lastpersonlabs/agentcmd/internal/analysis"
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/internal/analysis"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Analyze parses src as shell and lowers it under parent. The dialect comes

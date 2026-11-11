@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 func decode(t *testing.T, a Adapter, line string) []Record {

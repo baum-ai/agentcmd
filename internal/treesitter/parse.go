@@ -1,6 +1,6 @@
 // Package treesitter wraps the pure-Go tree-sitter runtime for the embedded
 // languages the analyzer supports. The wrapped node types stay private to
-// internal/languages.
+// the languages package.
 package treesitter
 
 import (
@@ -23,7 +23,15 @@ const (
 	JavaScript Language = "javascript"
 )
 
-func grammar(l Language) (*ts.Language, error) {
+// grammar returns the grammar of l. A build that excludes the language's
+// grammar (gotreesitter's grammar_subset tags without the language's tag)
+// panics inside the runtime; that is reported as an error instead.
+func grammar(l Language) (lang *ts.Language, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			lang, err = nil, fmt.Errorf("%s grammar is not linked into this build (build with its grammar_subset_%s tag): %v", l, l, r)
+		}
+	}()
 	switch l {
 	case Python:
 		return grammars.PythonLanguage(), nil

@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/internal/corpus"
-	"github.com/lastpersonlabs/agentcmd/model"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/internal/corpus"
+	"github.com/baum-ai/agentcmd/model"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	"github.com/baum-ai/agentcmd/rules"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func engine(t *testing.T) *Engine {

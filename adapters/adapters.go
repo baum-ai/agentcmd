@@ -11,7 +11,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // ErrUnrecognized is returned for records outside the adapter's schema.

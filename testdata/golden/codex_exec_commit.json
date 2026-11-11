@@ -1,0 +1,442 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_b02143594e0e9833edb095ff",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/9e41843a7a1229c7",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 325
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 79
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/abs/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 11
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "add",
+            "span": {
+              "source": "s1",
+              "start": 4,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "a",
+            "span": {
+              "source": "s1",
+              "start": 8,
+              "end": 9
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "b",
+            "span": {
+              "source": "s1",
+              "start": 10,
+              "end": 11
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/abs/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 13,
+        "end": 38
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 13,
+            "end": 16
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "diff",
+            "span": {
+              "source": "s1",
+              "start": 17,
+              "end": 21
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "--cached",
+            "span": {
+              "source": "s1",
+              "start": 22,
+              "end": 30
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "--check",
+            "span": {
+              "source": "s1",
+              "start": 31,
+              "end": 38
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/abs/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 40,
+        "end": 79
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 40,
+            "end": 43
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "commit",
+            "span": {
+              "source": "s1",
+              "start": 44,
+              "end": 50
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "-m",
+            "span": {
+              "source": "s1",
+              "start": 51,
+              "end": 53
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "Subject",
+            "span": {
+              "source": "s1",
+              "start": 55,
+              "end": 62
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "-m",
+            "span": {
+              "source": "s1",
+              "start": 64,
+              "end": 66
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "Body text.",
+            "span": {
+              "source": "s1",
+              "start": 68,
+              "end": 78
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/abs/wt"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n4",
+      "kind": "git.stage",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/abs/wt",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        },
+        {
+          "role": "pathspec",
+          "expression": "a",
+          "resolved": "/abs/wt/a",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s1",
+            "start": 8,
+            "end": 9
+          }
+        },
+        {
+          "role": "pathspec",
+          "expression": "b",
+          "resolved": "/abs/wt/b",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s1",
+            "start": 10,
+            "end": 11
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 0,
+            "end": 11
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "add"
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n5",
+      "kind": "git.inspect",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/abs/wt",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 13,
+            "end": 38
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "diff"
+      }
+    },
+    {
+      "id": "a3",
+      "node": "n6",
+      "kind": "git.commit",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "resolved": "/abs/wt",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 40,
+            "end": 79
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "commit"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 325,
+      "text": "text(await tools.exec_command({cmd:\"git add a b\\n git diff --cached --check\\n git commit -m 'Subject' -m 'Body text.'\",\"workdir\":\"/abs/wt\",\"sandbox_permissions\":\"require_escalated\",\"justification\":\"May I commit?\",\"max_output_tokens\":2500,\"yield_time_ms\":1000}));\ntext(await tools.mcp__codex_apps__github_get_user_login({}));\n"
+    },
+    {
+      "id": "s1",
+      "kind": "shell",
+      "length": 79,
+      "text": "git add a b\n git diff --cached --check\n git commit -m 'Subject' -m 'Body text.'",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 79,
+            "from_start": 35,
+            "from_end": 118
+          }
+        ]
+      }
+    }
+  ]
+}

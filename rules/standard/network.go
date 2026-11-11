@@ -4,8 +4,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/rules"
 )
 
 func isURL(v model.Value) bool {

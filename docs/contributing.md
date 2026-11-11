@@ -25,8 +25,11 @@ package managers return `Script`.
 Add a `native.Binding` in `native/standard/` keyed by namespace and tool
 name (and schema fingerprint when the input schema is pinned). Decode the
 declared input, build actions with `tool_contract` basis, and return
-`Shell`/`Exec` when the input carries a command. Patch text goes through
-`native.PatchResult`.
+`Shell`/`Exec` when the input carries a command (`Shells` for several
+independent shell texts, each with its own `Workdir`). Patch text goes through
+`native.PatchResult`. Keep `native/standard` free of heavy dependencies: the
+root package and the standard packages must not import tree-sitter
+(`just check-deps`; only `languages` and `cmd` may).
 
 ## Adding a fixture
 

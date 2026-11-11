@@ -1,10 +1,10 @@
 package agentcmd
 
 import (
-	"github.com/lastpersonlabs/agentcmd/native"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/native"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	"github.com/baum-ai/agentcmd/rules"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func stdRules() []rules.Rule        { return rstd.Rules() }

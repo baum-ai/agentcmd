@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/native"
-	nstd "github.com/lastpersonlabs/agentcmd/native/standard"
-	rstd "github.com/lastpersonlabs/agentcmd/rules/standard"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/native"
+	nstd "github.com/baum-ai/agentcmd/native/standard"
+	rstd "github.com/baum-ai/agentcmd/rules/standard"
 )
 
 func nativeInv(id, tool, args string) model.Invocation {

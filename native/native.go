@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // ShellSource asks the engine to analyze a shell command string carried in a
@@ -17,6 +17,40 @@ type ShellSource struct {
 	// Field is the JSON pointer of the input field, for provenance.
 	Field   string
 	Dialect string
+	// Workdir, when non-empty, is the working directory the text runs in. A
+	// relative value resolves against the invocation's working directory and
+	// is unknown when that is not known.
+	Workdir string
+	// WorkdirUnknown says the tool call names a working directory that is
+	// not statically known; the text is then analyzed with an unknown one.
+	// It takes precedence over Workdir.
+	WorkdirUnknown bool
+	// Span, when set, is the range of the root source (s0) the text was
+	// taken from, for providers that carry shell text inside a larger
+	// program. Without it the text maps onto the whole input.
+	Span *model.SourceSpan
+	// Reach qualifies how surely the text runs when the invocation does;
+	// empty means always. A program that runs the text conditionally, in a
+	// loop or inside an uncalled function says so here.
+	Reach model.Reachability
+}
+
+// Part is a group of actions a binding attributes to one region of the
+// input, with its own reachability. The engine gives it a node of its own.
+type Part struct {
+	// Reach qualifies the part; empty means always.
+	Reach model.Reachability
+	// Span is the region of the root source (s0) the part comes from.
+	Span *model.SourceSpan
+	// Actions of the part. With Unresolved set and no actions the engine
+	// adds a process.unresolved action.
+	Actions []model.Action
+	// Unresolved, when set, says why the region could not be analyzed. The
+	// part becomes an unknown node, with a diagnostic, and the analysis is
+	// partial.
+	Unresolved string
+	// Assumptions are added to every action of the part.
+	Assumptions []string
 }
 
 // Exec asks the engine to analyze a literal argv without shell parsing.
@@ -31,7 +65,14 @@ type Exec struct {
 type Result struct {
 	Actions []model.Action
 	Shell   *ShellSource
-	Exec    *Exec
+	// Shells are further shell texts, each analyzed independently with its
+	// own working directory and shell state (a call that runs several
+	// commands, such as a code-mode program). They follow Shell.
+	Shells []ShellSource
+	// Parts are further regions with their own reachability: nested actions
+	// and unresolved calls of a program.
+	Parts []Part
+	Exec  *Exec
 	// Detail labels the native node (e.g. "read", "edit", "patch").
 	Detail      string
 	Assumptions []string

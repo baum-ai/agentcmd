@@ -9,11 +9,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/lastpersonlabs/agentcmd/internal/source"
-	"github.com/lastpersonlabs/agentcmd/model"
-	"github.com/lastpersonlabs/agentcmd/native"
-	"github.com/lastpersonlabs/agentcmd/rules"
-	"github.com/lastpersonlabs/agentcmd/snapshot"
+	"github.com/baum-ai/agentcmd/internal/source"
+	"github.com/baum-ai/agentcmd/model"
+	"github.com/baum-ai/agentcmd/native"
+	"github.com/baum-ai/agentcmd/rules"
+	"github.com/baum-ai/agentcmd/snapshot"
 )
 
 // Limits bound the work of one analysis. Zero values mean unlimited only in
@@ -50,6 +50,38 @@ func (c Context) NodeContext() model.NodeContext {
 // ProgramFunc analyzes an embedded program under parent. It returns false
 // when the language is not supported by the engine configuration.
 type ProgramFunc func(b *Builder, parent string, p rules.Program, ctx Context) bool
+
+// Frontend is an optional embedded-language analyzer supplied by the caller
+// (see package languages). It is opaque: only this module can build or open
+// one, so the representation can change without breaking callers.
+type Frontend struct {
+	runtime string
+	program ProgramFunc
+}
+
+// NewFrontend builds a Frontend; runtime names the parser runtime recorded in
+// results.
+func NewFrontend(runtime string, program ProgramFunc) Frontend {
+	return Frontend{runtime: runtime, program: program}
+}
+
+// FrontendRuntime is the parser runtime a Frontend records in results.
+func FrontendRuntime(f Frontend) string { return f.runtime }
+
+// FrontendProgram is the program hook of a Frontend, nil for the zero value.
+func FrontendProgram(f Frontend) ProgramFunc { return f.program }
+
+// LanguageKey normalizes an interpreter language name to the key the
+// engine's Languages switches use: "python", "javascript" or "".
+func LanguageKey(name string) string {
+	switch strings.ToLower(name) {
+	case "python":
+		return "python"
+	case "javascript", "js", "node", "typescript":
+		return "javascript"
+	}
+	return ""
+}
 
 // ShellFunc analyzes shell source under parent.
 type ShellFunc func(b *Builder, parent string, src []byte, sourceID string, ctx Context) string

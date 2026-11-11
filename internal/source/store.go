@@ -5,7 +5,7 @@ package source
 import (
 	"fmt"
 
-	"github.com/lastpersonlabs/agentcmd/model"
+	"github.com/baum-ai/agentcmd/model"
 )
 
 // Store holds the sources of one analysis. s0 is the invocation input.

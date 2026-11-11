@@ -1,0 +1,271 @@
+{
+  "schema_version": "1.0.0",
+  "id": "an_d340655425862c003e70d7af",
+  "invocation": "x",
+  "versions": {
+    "analyzer": "1.1.0",
+    "ruleset": "8ebedd4b9ce62544/9e41843a7a1229c7",
+    "shell_parser": "mvdan.cc/sh/v3@v3.14.1"
+  },
+  "partial": true,
+  "nodes": [
+    {
+      "id": "n1",
+      "kind": "invocation",
+      "reachability": "always",
+      "detail": "exec",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "parent": "n1",
+      "kind": "native",
+      "span": {
+        "source": "s0",
+        "start": 0,
+        "end": 81
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "exec",
+      "native": {
+        "namespace": "harness",
+        "tool": "exec",
+        "binding": "std/codex/exec",
+        "binding_version": "1"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n3",
+      "parent": "n2",
+      "kind": "shell",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 9
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "detail": "bash",
+      "context": {
+        "cwd": {
+          "knowledge": "unknown",
+          "assumptions": [
+            "the tool call's working directory is not statically known"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n4",
+      "parent": "n3",
+      "kind": "command",
+      "span": {
+        "source": "s1",
+        "start": 0,
+        "end": 9
+      },
+      "reachability": "always",
+      "syntax": "parsed",
+      "command": {
+        "executable": {
+          "knowledge": "literal",
+          "text": "git",
+          "span": {
+            "source": "s1",
+            "start": 0,
+            "end": 3
+          }
+        },
+        "args": [
+          {
+            "knowledge": "literal",
+            "text": "add",
+            "span": {
+              "source": "s1",
+              "start": 4,
+              "end": 7
+            }
+          },
+          {
+            "knowledge": "literal",
+            "text": "a",
+            "span": {
+              "source": "s1",
+              "start": 8,
+              "end": 9
+            }
+          }
+        ],
+        "assumptions": [
+          "\"git\" denotes the standard executable",
+          "git aliases, hooks and configuration are not modeled"
+        ],
+        "rule": "std/git@2"
+      },
+      "context": {
+        "cwd": {
+          "knowledge": "unknown",
+          "assumptions": [
+            "the tool call's working directory is not statically known"
+          ]
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    },
+    {
+      "id": "n5",
+      "parent": "n2",
+      "kind": "unknown",
+      "span": {
+        "source": "s0",
+        "start": 68,
+        "end": 78
+      },
+      "reachability": "always",
+      "detail": "the cmd of the code-mode exec_command call is not a static string",
+      "context": {
+        "cwd": {
+          "knowledge": "literal",
+          "text": "/w"
+        },
+        "namespace": {
+          "kind": "host"
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "node": "n4",
+      "kind": "git.stage",
+      "resources": [
+        {
+          "role": "repository",
+          "expression": ".",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          }
+        },
+        {
+          "role": "pathspec",
+          "expression": "a",
+          "knowledge": "literal",
+          "namespace": {
+            "kind": "host"
+          },
+          "span": {
+            "source": "s1",
+            "start": 8,
+            "end": 9
+          }
+        }
+      ],
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/git",
+        "rule_version": "2",
+        "spans": [
+          {
+            "source": "s1",
+            "start": 0,
+            "end": 9
+          }
+        ]
+      },
+      "git": {
+        "subcommand": "add"
+      }
+    },
+    {
+      "id": "a2",
+      "node": "n5",
+      "kind": "process.unresolved",
+      "evidence": {
+        "basis": "syntax",
+        "rule": "std/codex/exec",
+        "rule_version": "1",
+        "assumptions": [
+          "the program is not executed; its values and control flow are not modeled"
+        ],
+        "spans": [
+          {
+            "source": "s0",
+            "start": 68,
+            "end": 78
+          }
+        ]
+      },
+      "process": {
+        "executable": {
+          "knowledge": "unknown"
+        },
+        "shell": true,
+        "reason": "the cmd of the code-mode exec_command call is not a static string"
+      }
+    }
+  ],
+  "sources": [
+    {
+      "id": "s0",
+      "kind": "text",
+      "length": 81,
+      "text": "tools.exec_command({cmd: \"git add a\", workdir});\ntools.exec_command({cmd: run});\n"
+    },
+    {
+      "id": "s1",
+      "kind": "shell",
+      "length": 9,
+      "text": "git add a",
+      "derived": {
+        "from": "s0",
+        "exact": false,
+        "segments": [
+          {
+            "start": 0,
+            "end": 9,
+            "from_start": 25,
+            "from_end": 36
+          }
+        ]
+      }
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "unresolved_binding",
+      "severity": "warning",
+      "message": "the cmd of the code-mode exec_command call is not a static string",
+      "node": "n5",
+      "span": {
+        "source": "s0",
+        "start": 68,
+        "end": 78
+      }
+    }
+  ]
+}

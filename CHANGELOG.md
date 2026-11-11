@@ -37,8 +37,10 @@ IDs change, as they do whenever the analyzer version or a ruleset changes.
   lexical scan of the JavaScript program finds `tools.exec_command({cmd,
   workdir})` calls (also `tools.shell`, and `apply_patch`) and analyzes each
   as a nested shell invocation with its own directory. Calls inside blocks,
-  after `&&`, `||`, `??` or `?`, in loops or in function bodies are marked
-  conditional, repeated or latent. A computed call, a repeated key, a spread
+  after `&&`, `||`, `??` or `?`, in loops and loop heads, or in function
+  bodies and parameter defaults are marked conditional, repeated or latent.
+  Only a `tools` that is not a member of another object (`other.tools`) is
+  the harness's. A computed call, a repeated key, a spread
   or computed key is `process.unresolved` and the result is partial; a
   dynamic `workdir` is an unknown directory. See `docs/ingestion.md`.
   `native.Result.Shells`, `native.Result.Parts` and the `Workdir`,

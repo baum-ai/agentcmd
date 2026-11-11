@@ -176,6 +176,9 @@ const str = 'tools.exec_command({cmd: "git add quoted"})';
 await tools.write_stdin({session_id: 5, chars: "", yield_time_ms: 1000});
 await tools.wait({session_id: 5});
 text(await tools.mcp__codex_apps__github_get_user_login({}));
+other.tools.exec_command({cmd: "git push"});
+other?.tools.exec_command({cmd: "git push"});
+a.b.tools?.shell({command: ["git", "push"]});
 `
 	a := runExec(t, prog, model.InputText, "/w")
 	if len(a.Actions) != 0 {
@@ -329,6 +332,18 @@ func TestCodexExecReachability(t *testing.T) {
 		{"try block", `try { await tools.exec_command({cmd: "git reset --hard"}) } catch (e) {}`, model.GitReset, model.ReachConditional},
 		{"object literal arg is transparent", `await run({a: await tools.exec_command({cmd: "git reset --hard"})});`, model.GitReset, model.ReachAlways},
 		{"template substitution", "text(`${await tools.exec_command({cmd: \"git reset --hard\"})}`);", model.GitReset, model.ReachAlways},
+		{"call after a statement", "a();\ntext(await tools.exec_command({cmd: \"git reset --hard\"}));", model.GitReset, model.ReachAlways},
+		{"spread of a call", `f(...await tools.exec_command({cmd: "git reset --hard"}));`, model.GitReset, model.ReachAlways},
+		{"if head", `if (await tools.exec_command({cmd: "git commit -m x"})) {}`, model.GitCommit, model.ReachAlways},
+		{"function parameter default", `function f(x = tools.exec_command({cmd: "git reset --hard"})) {}`, model.GitReset, model.ReachLatent},
+		{"arrow parameter default", `const f = (x = tools.exec_command({cmd: "git reset --hard"})) => x;`, model.GitReset, model.ReachLatent},
+		{"async arrow parameter default", `const f = async (x = await tools.exec_command({cmd: "git reset --hard"})) => {};`, model.GitReset, model.ReachLatent},
+		{"method parameter default", `const o = { m(x = tools.exec_command({cmd: "git reset --hard"})) {} };`, model.GitReset, model.ReachLatent},
+		{"for update", `for (let i = 0; i < 0; tools.exec_command({cmd: "git commit -am x"})) {}`, model.GitCommit, model.ReachRepeated},
+		{"for test", `for (;await tools.exec_command({cmd: "git commit -am x"});) {}`, model.GitCommit, model.ReachRepeated},
+		{"while test", `while (await tools.exec_command({cmd: "git commit -am x"})) {}`, model.GitCommit, model.ReachRepeated},
+		{"after a loop head", "for (;await tools.exec_command({cmd: \"git add y\"});) {}\nawait tools.exec_command({cmd: \"git commit -m x\"});", model.GitCommit, model.ReachAlways},
+		{"after a parameter default", "function f(x = tools.exec_command({cmd: \"git add y\"})) {}\nawait tools.exec_command({cmd: \"git commit -m x\"});", model.GitCommit, model.ReachAlways},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

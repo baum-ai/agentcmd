@@ -79,8 +79,10 @@ are not calls; `const exec_command = tools.exec_command` and
 Control flow is not modeled. A call that is inside any block (`{ ... }`
 other than an object literal), after `&&`, `||`, `??` or `?`, or in the
 unbraced body of `if`/`else` is `conditional`; one in a `for`, `while` or
-`do` body is `repeated`; one in a function, arrow, object method or class
-method body is `latent` (defined, not known to be called). The result carries
+`do` body or in the parenthesised head of a `for` or `while` (initializer
+included) is `repeated`; one in a function, arrow, object method or class
+method body, or in a default value of its parameters, is `latent` (defined,
+not known to be called). The result carries
 an info diagnostic saying so. Calls at the top level, in `await`, `text(...)`
 or `Promise.all([...])`, and in object literals and template substitutions
 are `always`.

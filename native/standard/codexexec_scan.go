@@ -15,7 +15,8 @@ import (
 // is lexical (no parse tree): it finds calls of known tools and, when the
 // first argument is an object literal, reads its properties. Nothing is
 // evaluated. Control flow is not modeled; the nesting of a call (inside a
-// block, after `&&`, inside a function body) only qualifies its reachability.
+// block, after `&&`, inside a function body or parameter list, in a loop
+// head) only qualifies its reachability.
 
 // maxCodexExecCalls bounds the commands taken from one program.
 const maxCodexExecCalls = 256
@@ -92,6 +93,8 @@ const (
 	frCond            // rest of an expression after && || ?? or ?
 	frStmt            // unbraced body of if/else, up to ;
 	frLoopStmt        // unbraced body of for/while, up to ;
+	frParams          // ( ... ) parameter list of a function, method or arrow
+	frLoopHead        // ( ... ) head of a for or while
 )
 
 type frame struct{ kind int }
@@ -106,9 +109,9 @@ func reachOf(stack []frame) model.Reachability {
 		switch f.kind {
 		case frBlock, frCond, frStmt:
 			r = 1
-		case frLoop, frLoopStmt:
+		case frLoop, frLoopStmt, frLoopHead:
 			r = 2
-		case frFunc, frArrow:
+		case frFunc, frArrow, frParams:
 			r = 3
 		}
 		if r > rank {
@@ -173,7 +176,7 @@ func scanCodexExec(source string) codexScan {
 				out.calls = append(out.calls, call)
 			}
 		}
-		stack = applyToken(stack, tokens, i)
+		stack = applyToken(stack, tokens, i, match)
 	}
 	return out
 }
@@ -204,6 +207,9 @@ func callTarget(tokens []token, i int, match []int, declared map[string]bool) (s
 		}
 		if q < 1 || tokens[q].kind != tokIdent || tokens[q].value != "tools" {
 			return "", false // some other object's method
+		}
+		if tokens[q-1].isPunct(".") && !(q >= 3 && tokens[q-2].isPunct(".") && tokens[q-3].isPunct(".")) {
+			return "", false // other.tools.name(: a member of another object, but not ...tools
 		}
 	} else if declared[name] {
 		return "", false // the program defines its own function of that name
@@ -408,12 +414,38 @@ func popExpr(stack []frame, stmt bool) []frame {
 	return stack
 }
 
+// paramsOpen reports whether the "(" at tokens[i] opens a parameter list:
+// of a function, of a method definition (`name(...) {`) or of an arrow
+// (`(...) =>`). Default values in it run only when the function is called.
+func paramsOpen(tokens []token, i int, match []int) bool {
+	t := tokens[i]
+	if t.fn {
+		return true
+	}
+	m := match[i]
+	if m <= 0 || m+1 >= len(tokens) {
+		return false
+	}
+	if t.meth && tokens[m+1].isPunct("{") {
+		return true
+	}
+	return tokens[m+1].isOperator("=") && m+2 < len(tokens) && tokens[m+2].isOperator(">")
+}
+
 // applyToken updates the nesting stack for tokens[i].
-func applyToken(stack []frame, tokens []token, i int) []frame {
+func applyToken(stack []frame, tokens []token, i int, match []int) []frame {
 	t := tokens[i]
 	prev := tokens[i-1]
 	switch {
 	case t.isPunct("("):
+		switch {
+		case paramsOpen(tokens, i, match):
+			return append(stack, frame{frParams})
+		case t.loop:
+			// The test and update of a for or while may run any number of
+			// times, including none; the initializer is weakened with them.
+			return append(stack, frame{frLoopHead})
+		}
 		return append(stack, frame{frParen})
 	case t.isPunct("["):
 		return append(stack, frame{frBracket})
@@ -721,9 +753,10 @@ type token struct {
 	start, end int
 	// For a ")": ctrl closes the head of an if, while, for, with or switch (a
 	// regular expression may follow), loop the head of a for or while, fn a
-	// function parameter list.
+	// function parameter list. A "(" carries loop and fn too.
 	ctrl, loop, fn bool
-	// meth marks the ")" of a method definition's parameters (`name(...) {`).
+	// meth marks the ")" of a method definition's parameters (`name(...) {`),
+	// and the "(" that may open one.
 	meth bool
 	// nl: a line break precedes the token. weak: the token is inside an
 	// unterminated string or template literal.
@@ -925,7 +958,9 @@ func (l *lexer) run(pos int, subst bool) int {
 			t := token{kind: tokPunct, text: string(c), start: pos, end: pos + 1}
 			switch c {
 			case '(':
-				l.parens = append(l.parens, parenFlags(l.toks))
+				p := parenFlags(l.toks)
+				l.parens = append(l.parens, p)
+				t.loop, t.fn, t.meth = p.loop, p.fn, p.meth
 			case ')':
 				if n := len(l.parens); n > 0 {
 					p := l.parens[n-1]

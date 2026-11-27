@@ -233,7 +233,7 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 	if res.Exec != nil {
 		execCtx := actx
 		if res.Exec.Workdir != "" {
-			execCtx.Cwd = resolveWorkdir(actx.Cwd, res.Exec.Workdir)
+			execCtx.Cwd = resolveWorkdir(actx.Cwd, res.Exec.Workdir, inv.Context.PathFlavor)
 		}
 		exe, argv := argvValues(res.Exec.Executable, res.Exec.Args)
 		b.RunCommand(id, rules.Command{Executable: exe, Args: argv, Span: model.SourceSpan{Source: "s0", End: len(b.Store.Text("s0"))}}, execCtx)
@@ -264,7 +264,7 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 		case sh.WorkdirUnknown:
 			shellCtx.Cwd = model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"the tool call's working directory is not statically known"}}
 		case sh.Workdir != "":
-			shellCtx.Cwd = resolveWorkdir(actx.Cwd, sh.Workdir)
+			shellCtx.Cwd = resolveWorkdir(actx.Cwd, sh.Workdir, inv.Context.PathFlavor)
 		}
 		if sh.Reach != "" {
 			shellCtx.Reach = sh.Reach
@@ -304,15 +304,82 @@ func (e *Engine) analyzeNative(b *analysis.Builder, root string, inv *model.Invo
 
 // resolveWorkdir is the working directory a tool call's workdir names: an
 // absolute one is used as is, a relative one resolves against the
-// invocation's directory and is unknown when that is unknown.
-func resolveWorkdir(base model.Value, workdir string) model.Value {
+// invocation's directory and is unknown when that is unknown. With the
+// Windows path flavor, a drive (`C:\x`, `C:/x`) or UNC (`\\host\share\x`)
+// path is absolute too; see resolveWindowsWorkdir.
+func resolveWorkdir(base model.Value, workdir string, flavor model.PathFlavor) model.Value {
+	if flavor == model.PathWindows {
+		return resolveWindowsWorkdir(base, workdir)
+	}
 	switch {
 	case strings.HasPrefix(workdir, "/"):
 		return model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Clean(workdir)}
 	case base.Concrete():
 		return model.Value{Knowledge: model.KnowledgeLiteral, Text: path.Join(base.Text, workdir)}
 	}
+	return relativeUnknown()
+}
+
+func relativeUnknown() model.Value {
 	return model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"relative working directory of the tool call, and the invocation's working directory is not known"}}
+}
+
+// resolveWindowsWorkdir resolves a workdir with Windows path syntax. Both
+// separators are accepted and the result uses forward slashes, the form of
+// the rest of the analysis (`C:\Users\me` becomes `C:/Users/me`). A drive or
+// UNC path is absolute. A path rooted without a drive (`\x`) takes the drive
+// of the invocation's directory, and a drive-relative one (`C:x`) resolves
+// against the invocation's directory when that is on the same drive; each is
+// unknown otherwise. A rooted path with no drive to take is kept as it is,
+// as on POSIX.
+func resolveWindowsWorkdir(base model.Value, workdir string) model.Value {
+	wd := strings.ReplaceAll(workdir, `\`, "/")
+	vol, rest := windowsVolume(wd)
+	var baseVol, baseRest string
+	if base.Concrete() {
+		baseVol, baseRest = windowsVolume(strings.ReplaceAll(base.Text, `\`, "/"))
+	}
+	join := func(vol, p string) model.Value {
+		return model.Value{Knowledge: model.KnowledgeLiteral, Text: vol + path.Clean(p)}
+	}
+	switch {
+	case vol != "" && strings.HasPrefix(rest, "/"):
+		return join(vol, rest)
+	case vol != "":
+		// Drive-relative: C:x is relative to the current directory on C:.
+		if baseVol != "" && strings.EqualFold(baseVol, vol) && strings.HasPrefix(baseRest, "/") {
+			return join(baseVol, path.Join(baseRest, rest))
+		}
+		return model.Value{Knowledge: model.KnowledgeUnknown, Assumptions: []string{"drive-relative working directory of the tool call, and the current directory on that drive is not known"}}
+	case strings.HasPrefix(rest, "/"):
+		if baseVol != "" {
+			return join(baseVol, rest)
+		}
+		return join("", rest)
+	case base.Concrete():
+		return join(baseVol, path.Join(baseRest, rest))
+	}
+	return relativeUnknown()
+}
+
+// windowsVolume splits a slash-separated Windows path into its volume (a
+// drive letter `C:`, or a UNC `//host/share`) and the rest.
+func windowsVolume(p string) (vol, rest string) {
+	if len(p) >= 2 && p[1] == ':' && ('a' <= p[0] && p[0] <= 'z' || 'A' <= p[0] && p[0] <= 'Z') {
+		return p[:2], p[2:]
+	}
+	if strings.HasPrefix(p, "//") && len(p) > 2 && p[2] != '/' {
+		host, after, ok := strings.Cut(p[2:], "/")
+		if !ok || host == "" {
+			return "", p
+		}
+		share, tail, _ := strings.Cut(after, "/")
+		if share == "" {
+			return "", p
+		}
+		return "//" + host + "/" + share, "/" + tail
+	}
+	return "", p
 }
 
 func contextFrom(ec model.ExecutionContext) analysis.Context {

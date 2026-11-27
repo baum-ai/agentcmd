@@ -98,7 +98,10 @@ type Fact struct {
 // KnownFact builds a known fact.
 func KnownFact(value, origin string) Fact { return Fact{Known: true, Value: value, Origin: origin} }
 
-// PathFlavor is the path syntax of the execution environment.
+// PathFlavor is the path syntax of the execution environment. With
+// PathWindows, a tool call's working directory may be a drive or UNC path
+// (`C:\repo`, `C:/repo`, `\\host\share`); it is resolved with forward
+// slashes (`C:/repo`). Empty means POSIX.
 type PathFlavor string
 
 const (

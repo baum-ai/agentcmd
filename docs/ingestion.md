@@ -46,6 +46,15 @@ but not a string, or is empty, makes the directory unknown (resources then keep 
 relative expressions and are not resolved). Without `workdir` the invocation's
 directory applies.
 
+When the invocation's `ExecutionContext.PathFlavor` is `windows`, a `workdir`
+(for `exec_command`, `shell` and code mode alike) uses Windows path syntax:
+both `\` and `/` separate, a drive path (`C:\repo`, `C:/repo`) or a UNC path
+(`\\host\share\repo`) is absolute, a path rooted without a drive (`\repo`)
+takes the drive of the invocation's directory, and a drive-relative one
+(`C:repo`) resolves only against an invocation directory on the same drive.
+The resolved directory uses forward slashes (`C:/repo`). Without the flavor a
+drive path is relative, as on POSIX.
+
 ### Code mode (`exec`)
 
 Code mode wraps tool calls in a JavaScript program, for example

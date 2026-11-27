@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- With `ExecutionContext.PathFlavor` set to `windows`, a Codex `workdir`
+  (`exec_command`, `shell` and code-mode `exec`) that is a drive path
+  (`C:\repo`, `C:/repo`) or a UNC path is absolute, and is resolved with
+  forward slashes (`C:/repo`). It used to be joined onto the invocation's
+  directory. A relative one joins the invocation's directory with forward
+  slashes; a rooted one (`\repo`) takes that directory's drive; a
+  drive-relative one (`C:repo`) is unknown unless that directory is on the
+  same drive. Without the flavor nothing changes. The analyzer version bumps
+  at release.
+
 ## 0.1.0 — first public release
 
 This is the first public tag. The repository carried an unpublished

@@ -25,8 +25,17 @@ numbers below.
 | Pinning | `go.sum` pins v0.52.0; grammar blobs are part of the module. Linked only through `languages`. |
 
 Consequence: the 1 MiB per-source limit bounds Python/JavaScript parsing at
-roughly two seconds of cooperative work; the parser timeout is set from the
-remaining context deadline.
+roughly two seconds of cooperative work on ordinary source. Pathological
+input can take far longer within the runtime's own limits (iterations,
+nodes, stack depth and arena memory, all scaled by the input's length, so
+deterministic), so each parse also has a two-second wall-clock budget,
+shortened to the remaining context deadline. Whether a parse reaches that
+budget depends on machine load, not only on the input. When it does, the
+program's partial tree is not analyzed (a `limit_reached` diagnostic, the
+same whatever the parser had reached), and `Analyze` returns the analysis
+with an error wrapping `ErrPartial` and `ErrTimeLimit`. An analysis
+returned with a nil error never depends on timing: the same input always
+yields it.
 
 ### mvdan/sh findings
 

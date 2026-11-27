@@ -23,7 +23,9 @@ budget (bytes, depth, actions) per invocation and detects cycles by
 (source digest, language, context) identity, not depth alone.
 
 Cancelling a Go context stops the analyzer between steps and sets the
-tree-sitter timeout; it cannot pre-empt a backend mid-parse. Applications
+tree-sitter timeout; it cannot pre-empt a backend mid-parse. A parse that
+reaches its wall-clock budget is reported with `ErrTimeLimit`, so a
+timing-dependent analysis is never returned as an ordinary one. Applications
 that need hard wall-clock guarantees run analysis in a separate worker
 process.
 

@@ -106,6 +106,7 @@ type Builder struct {
 	actions  []model.Action
 	diags    []model.Diagnostic
 	partial  bool
+	timed    string
 	depth    int
 	seen     map[string]bool
 	modified map[string]bool
@@ -174,6 +175,19 @@ func (b *Builder) Diag(d model.Diagnostic) {
 
 // MarkPartial flags the analysis as incomplete.
 func (b *Builder) MarkPartial() { b.partial = true }
+
+// TimeLimited records that work stopped at a wall-clock limit (msg says
+// which), so the analysis depends on timing; the engine returns it with
+// ErrTimeLimit. It also records msg as a budget diagnostic.
+func (b *Builder) TimeLimited(node, msg string) {
+	if b.timed == "" {
+		b.timed = msg
+	}
+	b.LimitReached(node, msg)
+}
+
+// Timed returns the first TimeLimited message, or "".
+func (b *Builder) Timed() string { return b.timed }
 
 // LimitReached records a budget diagnostic once per message and marks the
 // analysis partial.

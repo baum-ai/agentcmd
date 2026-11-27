@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- A Python or JavaScript parse stopped by its two-second wall-clock budget
+  now makes `Analyze` return the analysis with an error wrapping
+  `ErrPartial` and the new `ErrTimeLimit`. Whether a parse reaches that
+  budget depends on machine load, so such an analysis can differ between
+  runs; before, it was returned with a nil error, and the same input could
+  give different analyses under load (ENG-1910). An analysis returned with
+  a nil error never depends on timing. Every other parse stop (the
+  runtime's iteration, node, stack-depth and arena limits) is a function of
+  the input. The budget stays two seconds: without it, some 1 MiB inputs
+  parse for minutes. A sub-microsecond budget (from a nearly expired
+  context deadline) no longer disables the parser timeout. The analysis
+  itself is unchanged.
+
 ## 0.1.0 — first public release
 
 This is the first public tag. The repository carried an unpublished

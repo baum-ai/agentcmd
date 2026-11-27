@@ -96,6 +96,12 @@ func (f flow) with(reach model.Reachability) flow {
 	return f
 }
 
+// parseBudget is the wall-clock budget of one parse: a backstop against
+// inputs the runtime's own limits (which scale with the input) let run for
+// minutes. A parse that reaches it makes the analysis depend on timing, and
+// the engine reports that with ErrTimeLimit.
+var parseBudget = 2 * time.Second
+
 // frontend is the state shared by both language analyzers.
 type frontend struct {
 	b        *analysis.Builder
@@ -117,7 +123,7 @@ type moduleFunc[F any] func(F, string, *ts.Node, flow)
 func run[F any](b *analysis.Builder, parent string, p rules.Program, ctx analysis.Context, lang treesitter.Language, walk moduleFunc[F]) bool {
 	src := b.Store.Text(p.SourceID)
 	node := b.Node(parent)
-	timeout := 2 * time.Second
+	timeout := parseBudget
 	if dl, ok := b.Ctx.Deadline(); ok {
 		if rem := time.Until(dl); rem < timeout {
 			timeout = rem
@@ -133,8 +139,16 @@ func run[F any](b *analysis.Builder, parent string, p rules.Program, ctx analysi
 	defer tree.Release()
 	switch tree.Status {
 	case treesitter.StatusLimit:
+		// The partial tree is never walked: how far the parser got does not
+		// show in the analysis. A stop at the time budget still depends on
+		// machine load, so the engine returns it with ErrTimeLimit.
 		node.Syntax = model.SyntaxLimit
-		b.LimitReached(parent, fmt.Sprintf("%s parse stopped: %s", lang, tree.Reason))
+		msg := fmt.Sprintf("%s parse stopped: %s", lang, tree.Reason)
+		if tree.Timed {
+			b.TimeLimited(parent, msg)
+		} else {
+			b.LimitReached(parent, msg)
+		}
 		return true
 	case treesitter.StatusPartial:
 		node.Syntax = model.SyntaxPartial

@@ -58,7 +58,10 @@ type Tree struct {
 	Status Status
 	Nodes  int
 	Reason string
-	tree   *ts.Tree
+	// Timed reports a parse stopped by its time budget or a cancellation:
+	// whether that happens depends on machine load, not on the input.
+	Timed bool
+	tree  *ts.Tree
 }
 
 // Release returns backend memory. The tree must not be used afterwards.
@@ -69,7 +72,10 @@ func (t *Tree) Release() {
 }
 
 // Parse parses src with a cooperative timeout and a post-parse node budget.
-// Parsers are created per call, so Parse is safe for concurrent use.
+// Parsers are created per call, so Parse is safe for concurrent use. Every
+// other stop (the runtime's iteration, node, stack-depth and arena limits,
+// which scale with len(src)) is a function of the input; a timeout is not,
+// and Tree.Timed reports it.
 func Parse(l Language, src []byte, timeout time.Duration, maxNodes int) (*Tree, error) {
 	lang, err := grammar(l)
 	if err != nil {
@@ -77,7 +83,7 @@ func Parse(l Language, src []byte, timeout time.Duration, maxNodes int) (*Tree, 
 	}
 	p := ts.NewParser(lang)
 	if timeout > 0 {
-		p.SetTimeoutMicros(uint64(timeout / time.Microsecond))
+		p.SetTimeoutMicros(uint64(max(timeout/time.Microsecond, 1)))
 	}
 	tree, err := p.ParseStrict(src)
 	out := &Tree{Lang: lang, Source: src, Status: StatusParsed, tree: tree}
@@ -86,7 +92,9 @@ func Parse(l Language, src []byte, timeout time.Duration, maxNodes int) (*Tree, 
 			return nil, err
 		}
 		out.Status = StatusLimit
-		out.Reason = string(tree.ParseStopReason())
+		reason := tree.ParseStopReason()
+		out.Reason = string(reason)
+		out.Timed = reason == ts.ParseStopTimeout || reason == ts.ParseStopCancelled
 	}
 	out.Root = tree.RootNode()
 	out.Nodes = count(out.Root, maxNodes)

@@ -66,6 +66,13 @@ type Engine struct {
 // analysis, so callers can tell them from configuration and I/O failures.
 var ErrPartial = errors.New("partial analysis")
 
+// ErrTimeLimit is joined, with ErrPartial, onto the error returned with an
+// analysis that stopped at a wall-clock limit: an embedded-language parse
+// that ran past its time budget (see docs/compatibility.md). Such an
+// analysis may differ between runs of the same input, as machine load
+// does; an analysis returned with a nil error never depends on timing.
+var ErrTimeLimit = errors.New("time limit reached")
+
 // New validates and freezes a configuration.
 func New(cfg Config) (*Engine, error) {
 	cfg.Limits = fillLimits(cfg.Limits)
@@ -177,6 +184,10 @@ func (e *Engine) finish(ctx context.Context, b *analysis.Builder, inv *model.Inv
 	if err := ctx.Err(); err != nil {
 		a.Partial = true
 		return a, fmt.Errorf("%w: %w", ErrPartial, err)
+	}
+	if msg := b.Timed(); msg != "" {
+		a.Partial = true
+		return a, fmt.Errorf("%w: %w: %s", ErrPartial, ErrTimeLimit, msg)
 	}
 	return a, nil
 }
